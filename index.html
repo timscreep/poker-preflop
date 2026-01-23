@@ -1,98 +1,47 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <title>UTG GTO Trainer</title>
-        <style>
-            body {
-                font-family: sans-serif;
-                background: #111;
-                color: #eee;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                padding: 20px;
-            }
-            #hand {
-                font-size: 50px;
-                margin: 30px;
-            }
-            .btns {
-                display: flex;
-                gap: 20px;
-            }
-            button {
-                padding: 12px 28px;
-                font-size: 18px;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-            }
-            .correct {
-                color: #6f6;
-                font-size: 22px;
-                margin-top: 20px;
-            }
-            .wrong {
-                color: #f66;
-                font-size: 22px;
-                margin-top: 20px;
-            }
-        </style>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Poker Preflop Trainer</title>
+        <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body>
-        <h2>UTG OPEN — GTO Wizard тренажёр</h2>
-        <div id="hand">--</div>
+    <body
+        class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center gap-6 p-6"
+    >
+        <div id="handBox" class="flex gap-2"></div>
 
-        <div class="btns">
-            <button onclick="answer('RAISE')">RAISE</button>
-            <button onclick="answer('CALL')">CALL</button>
-            <button onclick="answer('FOLD')">FOLD</button>
+        <div id="result" class="text-lg font-semibold h-6"></div>
+
+        <div class="flex gap-3">
+            <button class="btn px-4 py-2 bg-blue-600 rounded" data-act="raise">
+                RAISE
+            </button>
+            <button class="btn px-4 py-2 bg-yellow-600 rounded" data-act="call">
+                CALL
+            </button>
+            <button class="btn px-4 py-2 bg-red-600 rounded" data-act="fold">
+                FOLD
+            </button>
         </div>
 
-        <div id="result"></div>
+        <button id="next" class="px-4 py-2 mt-2 rounded bg-neutral-700">
+            Next
+        </button>
 
         <script>
-            // === базовый визардовый UTG open (чистый) ===
-            const RAISE = new Set([
-                "22",
-                "33",
-                "44",
-                "55",
-                "66",
-                "77",
-                "88",
-                "99",
-                "TT",
-                "JJ",
-                "QQ",
-                "KK",
-                "AA",
-                "A2s",
-                "A3s",
-                "A4s",
-                "A5s",
-                "A8s",
-                "A9s",
-                "ATs",
-                "AJs",
-                "AQs",
-                "AKs",
-                "KTs",
-                "KJs",
-                "KQs",
-                "QTs",
-                "QJs",
-                "JTs",
-                "T9s",
-                "AQo",
-                "AKo",
-            ]);
+            let charts = null;
+            let current = null;
 
-            // K5s+ (как ты заметил) → K5s,K6s,K7s,K8s,K9s,KTs,KQs,KJs,AKs
-            ["K5s", "K6s", "K7s", "K8s", "K9s"].forEach((x) => RAISE.add(x));
+            async function loadCharts() {
+                const res = await fetch("charts.json");
+                charts = await res.json();
+            }
 
-            const ALL = [];
+            function rand(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+
             const ranks = [
                 "A",
                 "K",
@@ -108,40 +57,77 @@
                 "3",
                 "2",
             ];
+            const suits = ["s", "h", "d", "c"];
 
-            for (let i = 0; i < ranks.length; i++) {
-                for (let j = i; j < ranks.length; j++) {
-                    let r1 = ranks[i],
-                        r2 = ranks[j];
-                    if (i === j)
-                        ALL.push(r1 + r2); // пары
-                    else {
-                        ALL.push(r1 + r2 + "s");
-                        ALL.push(r1 + r2 + "o");
-                    }
-                }
+            function sortHand(r1, r2) {
+                return ranks.indexOf(r1) < ranks.indexOf(r2)
+                    ? [r2, r1]
+                    : [r1, r2];
             }
 
-            let currentHand = null;
+            function genHand() {
+                let r1 = rand(ranks);
+                let r2 = rand(ranks);
+                let s1 = rand(suits);
+                let s2 = rand(suits);
+
+                if (r1 === r2) s1 = s2; // пары всегда оку suited не важен
+
+                let [R1, R2] = sortHand(r1, r2);
+
+                let combo = "";
+                if (R1 === R2) {
+                    combo = R1 + R2;
+                } else {
+                    combo = R1 + R2 + (s1 === s2 ? "s" : "o");
+                }
+
+                return { r1: R1, r2: R2, s1, s2, combo };
+            }
+
+            function suitToFile(r, s) {
+                return `/deck/${r}${s}.png`;
+            }
+
+            function showHand(h) {
+                const box = document.getElementById("handBox");
+                box.innerHTML = "";
+                box.innerHTML += `<img class="w-24" src="${suitToFile(h.r1, h.s1)}">`;
+                box.innerHTML += `<img class="w-24" src="${suitToFile(h.r2, h.s2)}">`;
+            }
 
             function nextHand() {
-                currentHand = ALL[Math.floor(Math.random() * ALL.length)];
-                document.getElementById("hand").textContent = currentHand;
+                current = genHand();
+                showHand(current);
                 document.getElementById("result").textContent = "";
             }
 
-            function answer(action) {
-                let correct = RAISE.has(currentHand) ? "RAISE" : "FOLD";
-                let out = document.getElementById("result");
-                if (action === correct) {
-                    out.innerHTML = `<div class="correct">✔ правильно (${correct})</div>`;
-                } else {
-                    out.innerHTML = `<div class="wrong">✘ неверно — GTO: ${correct}</div>`;
-                }
-                setTimeout(nextHand, 900);
+            async function main() {
+                await loadCharts();
+
+                nextHand();
+
+                document.querySelectorAll(".btn").forEach((b) => {
+                    b.onclick = () => {
+                        const user = b.dataset.act;
+                        const correct =
+                            charts.open.UTG[current.combo] || "fold";
+
+                        let res = document.getElementById("result");
+                        if (user === correct) {
+                            res.textContent = "✓ Correct (" + correct + ")";
+                            res.className = "text-green-400 font-semibold";
+                        } else {
+                            res.textContent = "✗ Wrong (" + correct + ")";
+                            res.className = "text-red-400 font-semibold";
+                        }
+                    };
+                });
+
+                document.getElementById("next").onclick = nextHand;
             }
 
-            nextHand();
+            main();
         </script>
     </body>
 </html>

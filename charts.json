@@ -1,0 +1,16 @@
+{
+  "open": {
+    "UTG": {
+      "AA": "raise",
+      "KK": "raise",
+      "QQ": "raise",
+      "JJ": "raise",
+      "AKs": "raise",
+      "A5s": "raise",
+      "TT": "call",
+      "99": "call",
+      "A2o": "fold",
+      "K9o": "fold"
+    }
+  }
+}
