@@ -30,6 +30,12 @@
         </button>
 
         <script>
+            function showPlaceholder() {
+  const box = document.getElementById("handBox");
+  box.innerHTML = `<div class="w-24 h-full bg-neutral-800 rounded"></div>
+                   <div class="w-24 h-full bg-neutral-800 rounded"></div>`;
+}
+            
             let charts = null;
             let current = null;
 
@@ -150,7 +156,9 @@ async function preloadDeck() {
             promises.push(p);
         }
     }
-
+await preloadDeck();
+showPlaceholder();
+await loadCharts();
     await Promise.all(promises);
 }
             main();
