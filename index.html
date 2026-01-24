@@ -60,7 +60,7 @@
             const suits = ["s", "h", "d", "c"];
 
             function sortHand(r1, r2) {
-                return ranks.indexOf(r1) < ranks.indexOf(r2)
+                return ranks.indexOf(r1) > ranks.indexOf(r2)
                     ? [r2, r1]
                     : [r1, r2];
             }
@@ -71,7 +71,11 @@
                 let s1 = rand(suits);
                 let s2 = rand(suits);
 
-                if (r1 === r2) s1 = s2; // пары всегда оку suited не важен
+                if (r1 === r2) {
+                    while (s1 === s2) {
+                        s2 = rand(suits);
+                                }
+                    } // пары всегда оку suited не важен
 
                 let [R1, R2] = sortHand(r1, r2);
 
