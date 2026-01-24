@@ -1,167 +1,137 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Poker Preflop Trainer</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body
-        class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center justify-center gap-6 p-6"
-    >
-        <div id="handBox" class="flex gap-2"></div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Poker Preflop Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-neutral-900 text-neutral-100 min-h-screen flex flex-col items-center p-6">
 
+    <!-- MODE SELECT -->
+    <div id="setup" class="flex flex-col gap-4 items-center mt-6">
+        <div class="flex gap-2">
+            <button data-mode="RFI" class="px-3 py-1 bg-neutral-700 rounded modeBtn">RFI</button>
+            <button data-mode="vs3bet" class="px-3 py-1 bg-neutral-700 rounded modeBtn">vs 3bet</button>
+            <button data-mode="vs4bet" class="px-3 py-1 bg-neutral-700 rounded modeBtn">vs 4bet</button>
+            <button data-mode="vsOpen" class="px-3 py-1 bg-neutral-700 rounded modeBtn">vs Open</button>
+            <button data-mode="random" class="px-3 py-1 bg-blue-700 rounded">Random</button>
+        </div>
+
+        <div class="flex gap-2">
+            <select id="heroPos" class="bg-neutral-800 px-2 py-1 rounded">
+                <option value="">Hero (random)</option>
+                <option>UTG</option><option>MP</option><option>CO</option>
+                <option>BTN</option><option>SB</option><option>BB</option>
+            </select>
+
+            <select id="villainPos" class="bg-neutral-800 px-2 py-1 rounded">
+                <option value="">Villain (random)</option>
+                <option>UTG</option><option>MP</option><option>CO</option>
+                <option>BTN</option><option>SB</option><option>BB</option>
+            </select>
+        </div>
+
+        <button id="startBtn" class="px-4 py-2 bg-green-700 rounded">Start Training</button>
+    </div>
+
+    <!-- TRAINER -->
+    <div id="trainer" class="hidden flex flex-col items-center gap-4 mt-8">
+
+        <div id="handBox" class="flex gap-2"></div>
         <div id="result" class="text-lg font-semibold h-6"></div>
 
         <div class="flex gap-3">
-            <button class="btn px-4 py-2 bg-blue-600 rounded" data-act="raise">
-                RAISE
-            </button>
-            <button class="btn px-4 py-2 bg-yellow-600 rounded" data-act="call">
-                CALL
-            </button>
-            <button class="btn px-4 py-2 bg-red-600 rounded" data-act="fold">
-                FOLD
-            </button>
+            <button class="act px-4 py-2 bg-blue-600 rounded" data-act="raise">RAISE</button>
+            <button class="act px-4 py-2 bg-yellow-600 rounded" data-act="call">CALL</button>
+            <button class="act px-4 py-2 bg-red-600 rounded" data-act="fold">FOLD</button>
         </div>
 
-        <button id="next" class="px-4 py-2 mt-2 rounded bg-neutral-700">
-            Next
-        </button>
+        <button id="next" class="px-4 py-2 rounded bg-neutral-700">Next</button>
+    </div>
 
-        <script>
-            function showPlaceholder() {
-  const box = document.getElementById("handBox");
-  box.innerHTML = `<div class="w-24 h-full bg-neutral-800 rounded"></div>
-                   <div class="w-24 h-full bg-neutral-800 rounded"></div>`;
+<script>
+const ranks = ["A","K","Q","J","T","9","8","7","6","5","4","3","2"];
+const suits = ["s","h","d","c"];
+const modes = ["RFI","vs3bet","vs4bet","vsOpen"];
+const positions = ["UTG","MP","CO","BTN","SB","BB"];
+
+let charts=null, current=null, mode=null, hero=null, villain=null;
+
+function rand(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function sortHand(r1,r2){
+    return ranks.indexOf(r1)>ranks.indexOf(r2)?[r2,r1]:[r1,r2];
 }
-            
-            let charts = null;
-            let current = null;
 
-            async function loadCharts() {
-                const res = await fetch("charts.json");
-                charts = await res.json();
-            }
+function genHand(){
+    let r1=rand(ranks), r2=rand(ranks), s1=rand(suits), s2=rand(suits);
+    if(r1===r2){ while(s1===s2) s2=rand(suits); }
+    let [R1,R2]=sortHand(r1,r2);
+    let combo = (R1===R2) ? R1+R2 : R1+R2 + (s1===s2 ? "s":"o");
+    return {r1:R1,r2:R2,s1,s2,combo};
+}
 
-            function rand(arr) {
-                return arr[Math.floor(Math.random() * arr.length)];
-            }
+function suitToFile(r,s){return `deck/${r}${s}.png`; }
 
-            const ranks = [
-                "A",
-                "K",
-                "Q",
-                "J",
-                "T",
-                "9",
-                "8",
-                "7",
-                "6",
-                "5",
-                "4",
-                "3",
-                "2",
-            ];
-            const suits = ["s", "h", "d", "c"];
+function showHand(h){
+    const box=document.getElementById("handBox");
+    box.innerHTML=`<img class="w-24" src="${suitToFile(h.r1,h.s1)}">
+                   <img class="w-24" src="${suitToFile(h.r2,h.s2)}">`;
+}
 
-            function sortHand(r1, r2) {
-                return ranks.indexOf(r1) > ranks.indexOf(r2)
-                    ? [r2, r1]
-                    : [r1, r2];
-            }
+async function loadChart(){
+    let m = mode==="random" ? rand(modes) : mode;
+    let hp = hero || rand(positions);
 
-            function genHand() {
-                let r1 = rand(ranks);
-                let r2 = rand(ranks);
-                let s1 = rand(suits);
-                let s2 = rand(suits);
-
-                if (r1 === r2) {
-                    while (s1 === s2) {
-                        s2 = rand(suits);
-                                }
-                    } // пары всегда оку suited не важен
-
-                let [R1, R2] = sortHand(r1, r2);
-
-                let combo = "";
-                if (R1 === R2) {
-                    combo = R1 + R2;
-                } else {
-                    combo = R1 + R2 + (s1 === s2 ? "s" : "o");
-                }
-
-                return { r1: R1, r2: R2, s1, s2, combo };
-            }
-
-            function suitToFile(r, s) {
-                return `deck/${r}${s}.png`;
-            }
-
-            function showHand(h) {
-                const box = document.getElementById("handBox");
-                box.innerHTML = "";
-                box.innerHTML += `<img class="w-24" src="${suitToFile(h.r1, h.s1)}">`;
-                box.innerHTML += `<img class="w-24" src="${suitToFile(h.r2, h.s2)}">`;
-            }
-
-            function nextHand() {
-                current = genHand();
-                showHand(current);
-                document.getElementById("result").textContent = "";
-            }
-
-            async function main() {
-                await loadCharts();
-
-                nextHand();
-
-                document.querySelectorAll(".btn").forEach((b) => {
-                    b.onclick = () => {
-                        const user = b.dataset.act;
-                        const correct =
-                            charts.open.UTG[current.combo] || "fold";
-
-                        let res = document.getElementById("result");
-                        if (user === correct) {
-                            res.textContent = "✓ Correct (" + correct + ")";
-                            res.className = "text-green-400 font-semibold";
-                        } else {
-                            res.textContent = "✗ Wrong (" + correct + ")";
-                            res.className = "text-red-400 font-semibold";
-                        }
-                    };
-                });
-
-                document.getElementById("next").onclick = nextHand;
-            }
-const preloadImages = {};
-async function preloadDeck() {
-    const ranks = ["A","K","Q","J","T","9","8","7","6","5","4","3","2"];
-    const suits = ["s","h","d","c"];
-
-    const promises = [];
-
-    for (let r of ranks) {
-        for (let s of suits) {
-            const file = `deck/${r}${s}.png`;
-            const img = new Image();
-            const p = new Promise(res=>{
-                img.onload = res;
-                img.onerror = res; // чтобы не висеть вечно если файла нет
-            });
-            img.src = file;
-            preloadImages[`${r}${s}`] = img;
-            promises.push(p);
-        }
+    if(m==="RFI"){
+        return fetch(`charts/RFI/${hp}.json`).then(r=>r.json());
     }
-await preloadDeck();
-showPlaceholder();
-await loadCharts();
-    await Promise.all(promises);
+
+    let vp = villain || rand(positions);
+    return fetch(`charts/${m}/${hp}_vs_${vp}.json`).then(r=>r.json());
 }
-            main();
-        </script>
-    </body>
+
+function nextHand(){
+    current=genHand();
+    showHand(current);
+    document.getElementById("result").textContent="";
+}
+
+document.getElementById("startBtn").onclick = async ()=>{
+    mode=document.querySelector('[data-mode].selected')?.dataset.mode || "random";
+    hero=document.getElementById("heroPos").value || null;
+    villain=document.getElementById("villainPos").value || null;
+
+    charts = await loadChart();
+    document.getElementById("setup").classList.add("hidden");
+    document.getElementById("trainer").classList.remove("hidden");
+    nextHand();
+};
+
+document.querySelectorAll(".modeBtn").forEach(b=>{
+    b.onclick=()=> {
+        document.querySelectorAll(".modeBtn").forEach(x=>x.classList.remove("selected","bg-blue-700"));
+        b.classList.add("selected","bg-blue-700");
+    };
+});
+
+document.querySelectorAll(".act").forEach(b=>{
+    b.onclick=()=>{
+        const user=b.dataset.act;
+        const correct = charts.open[current.combo] || "fold";
+        let el=document.getElementById("result");
+        if(user===correct){
+            el.textContent="✓ Correct ("+correct+")";
+            el.className="text-green-400 font-semibold";
+        }else{
+            el.textContent="✗ Wrong ("+correct+")";
+            el.className="text-red-400 font-semibold";
+        }
+    };
+});
+
+document.getElementById("next").onclick=nextHand;
+</script>
+</body>
 </html>
