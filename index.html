@@ -130,7 +130,29 @@
 
                 document.getElementById("next").onclick = nextHand;
             }
+const preloadImages = {};
+async function preloadDeck() {
+    const ranks = ["A","K","Q","J","T","9","8","7","6","5","4","3","2"];
+    const suits = ["s","h","d","c"];
 
+    const promises = [];
+
+    for (let r of ranks) {
+        for (let s of suits) {
+            const file = `deck/${r}${s}.png`;
+            const img = new Image();
+            const p = new Promise(res=>{
+                img.onload = res;
+                img.onerror = res; // чтобы не висеть вечно если файла нет
+            });
+            img.src = file;
+            preloadImages[`${r}${s}`] = img;
+            promises.push(p);
+        }
+    }
+
+    await Promise.all(promises);
+}
             main();
         </script>
     </body>
