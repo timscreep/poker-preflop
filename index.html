@@ -2,91 +2,158 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <title>GTO Trainer Pro v2</title>
+    <title>GTO Trainer Pro | Catppuccin Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        :root { --base: #0b0e14; --surf: #161b22; --text: #c9d1d9; --accent: #58a6ff; 
-                --red: #f38ba8; --green: #a6e3a1; --blue: #89b4fa; }
-        body { background: var(--base); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; }
+        :root {
+            --base: #1e1e2e; --surface: #313244; --overlay: #45475a;
+            --text: #cdd6f4; --mauve: #cba6f7; --red: #f38ba8;
+            --green: #a6e3a1; --blue: #89b4fa; --peach: #fab387;
+        }
+        body { background-color: var(--base); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
         
-        /* Слайдер 3-в-1 */
-        .slider-root { width: 100%; height: 32px; background: var(--blue); position: relative; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #30363d; }
-        .bar-raise { position: absolute; height: 100%; background: var(--red); left: 0; }
+        /* Слайдер с удобными ручками */
+        .slider-container { height: 32px; background: var(--blue); position: relative; border-radius: 99px; cursor: pointer; border: 2px solid var(--overlay); }
+        .bar-raise { position: absolute; height: 100%; background: var(--red); border-radius: 99px 0 0 99px; }
         .bar-call { position: absolute; height: 100%; background: var(--green); }
-        .handle { position: absolute; width: 6px; height: 100%; background: white; cursor: col-resize; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .handle { 
+            position: absolute; width: 20px; height: 20px; background: white; 
+            border-radius: 50%; top: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); border: 2px solid var(--mauve);
+            cursor: grab; z-index: 20; transition: scale 0.2s;
+        }
+        .handle:active { cursor: grabbing; scale: 1.2; }
 
-        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; background: #30363d; }
-        .cell { width: 38px; height: 38px; background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; position: relative; overflow: hidden; border-radius: 2px; }
+        /* Матрица */
+        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; background: var(--overlay); }
+        .cell { aspect-ratio: 1; background: var(--blue); position: relative; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; border-radius: 2px; }
         .cell-bg { position: absolute; inset: 0; display: flex; flex-direction: column; }
-        .cell-text { position: relative; z-index: 5; color: #000; font-weight: 800; text-shadow: 0 0 2px rgba(255,255,255,0.3); }
+        .cell-text { position: relative; z-index: 10; color: #11111b; pointer-events: none; }
 
-        .active-tab { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
+        .sidebar-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer mb-1; }
+        .sidebar-item.active { background: var(--mauve); color: var(--base); font-weight: bold; }
+        .sidebar-item:not(.active):hover { background: var(--surface); }
+
+        .poker-table { width: 100%; max-width: 320px; height: 180px; border: 6px solid var(--overlay); border-radius: 100px; position: relative; background: radial-gradient(#313244, #181825); }
+        .pos-node { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: var(--surface); border: 2px solid var(--overlay); @apply flex items-center justify-center text-[10px] font-black; }
+        .pos-hero { border-color: var(--mauve); color: var(--mauve); box-shadow: 0 0 10px var(--mauve); }
+        .pos-villain { border-color: var(--red); color: var(--red); }
+        
+        .card { width: 70px; height: 100px; border-radius: 8px; @apply flex flex-col p-2 font-black text-white shadow-xl; }
+        .card.s { background: #45475a; } .card.h { background: var(--red); }
+        .card.c { background: #238636; } .card.d { background: var(--blue); }
+
         .hidden { display: none !important; }
     </style>
 </head>
-<body class="p-4">
+<body class="flex">
 
-    <div class="flex gap-8 mb-6 font-bold uppercase text-xs tracking-widest">
-        <button onclick="setTab('ed')" id="tab-ed" class="active-tab pb-1">Редактор</button>
-        <button onclick="setTab('tr')" id="tab-tr" class="opacity-50 pb-1">Тренажер</button>
-    </div>
-
-    <div class="bg-[#161b22] p-3 rounded-lg flex gap-4 mb-6 border border-[#30363d]">
-        <select id="mode" onchange="syncUI()" class="bg-[#0d1117] p-1 rounded text-sm outline-none border border-gray-700">
-            <option value="RFI">RFI</option>
-            <option value="vsOpen">vs Open</option>
-            <option value="vs3bet">vs 3-Bet</option>
-        </select>
-        <select id="hero" onchange="syncUI()" class="bg-[#0d1117] p-1 rounded text-sm outline-none border border-gray-700">
-            <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
-        </select>
-    </div>
-
-    <div id="view-ed" class="flex flex-col items-center w-full max-w-[510px]">
-        <div class="bg-[#161b22] p-4 rounded-xl border border-[#30363d] w-full mb-6">
-            <div class="flex justify-between text-[10px] font-bold mb-2 uppercase tracking-tighter">
-                <span style="color: var(--red)">Raise: <span id="v-r">30</span>%</span>
-                <span style="color: var(--green)">Call: <span id="v-c">40</span>%</span>
-                <span style="color: var(--blue)">Fold: <span id="v-f">30</span>%</span>
-            </div>
-            
-            <div class="slider-root" id="s-root">
-                <div class="bar-raise" id="b-r" style="width: 30%;"></div>
-                <div class="bar-call" id="b-c" style="left: 30%; width: 40%;"></div>
-                <div class="handle" id="h1" style="left: 30%;"></div>
-                <div class="handle" id="h2" style="left: 70%;"></div>
-            </div>
-            <p class="text-[9px] opacity-40 mt-3 text-center uppercase">Настройте частоты и кликайте по рукам в матрице</p>
+    <aside class="w-64 border-r border-overlay p-6 flex flex-col bg-[#11111b]">
+        <div class="mb-10 px-2">
+            <h1 class="text-2xl font-black tracking-tighter text-mauve">GTO<span class="text-white">PRO</span></h1>
         </div>
-
-        <div id="matrix" class="matrix shadow-2xl"></div>
         
-        <div class="flex gap-4 mt-6">
-            <button onclick="exportJSON()" class="text-[10px] bg-white/5 hover:bg-white/10 px-4 py-2 rounded uppercase border border-white/10">Сохранить JSON</button>
-            <button onclick="rangeData={}; renderMatrix()" class="text-[10px] text-red-400 hover:underline uppercase">Очистить всё</button>
-        </div>
-    </div>
+        <nav class="flex-1">
+            <div onclick="setTab('ed')" id="tab-ed" class="sidebar-item active">Editor</div>
+            <div onclick="setTab('tr')" id="tab-tr" class="sidebar-item text-white/50">Trainer</div>
+            <div onclick="setTab('lib')" id="tab-lib" class="sidebar-item text-white/50">Library</div>
+        </nav>
 
-    <div id="view-tr" class="hidden flex flex-col items-center w-full max-w-sm">
-        <p class="opacity-50 italic text-sm">Тренажер адаптирован под новые частоты</p>
-        <button onclick="deal()" class="mt-4 bg-blue-600 px-6 py-2 rounded font-bold">Начать тест</button>
-    </div>
+        <div class="mt-auto bg-surface/50 p-4 rounded-2xl border border-overlay">
+            <div class="text-[10px] uppercase font-bold opacity-40 mb-3">Session Stats</div>
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between text-xs font-bold">
+                    <span>Correct</span>
+                    <span id="stat-ok" class="text-green">0</span>
+                </div>
+                <div class="flex justify-between text-xs font-bold">
+                    <span>Mistakes</span>
+                    <span id="stat-err" class="text-red">0</span>
+                </div>
+                <div class="h-1 bg-overlay rounded-full mt-1 overflow-hidden">
+                    <div id="stat-bar" class="h-full bg-mauve w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        
+        <header class="h-20 border-b border-overlay px-8 flex items-center justify-between bg-base/50 backdrop-blur-md">
+            <div class="flex gap-4">
+                <select id="mode" onchange="syncUI()" class="bg-surface px-3 py-2 rounded-lg text-xs font-bold border border-overlay outline-none">
+                    <option value="RFI">RFI</option><option value="vsOpen">vs Open</option><option value="vs3bet">vs 3-Bet</option>
+                </select>
+                <select id="hero" onchange="syncUI()" class="bg-surface px-3 py-2 rounded-lg text-xs font-bold border border-overlay outline-none">
+                    <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
+                </select>
+            </div>
+            <button onclick="exportJSON()" class="text-[10px] font-bold uppercase opacity-30 hover:opacity-100 transition">Export Range</button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
+            
+            <div id="view-ed" class="w-full max-w-2xl flex flex-col items-center">
+                <div class="w-full bg-surface p-6 rounded-3xl border border-overlay shadow-2xl mb-8">
+                    <div class="flex justify-between text-xs font-black mb-4 px-1">
+                        <span class="text-red">RAISE: <span id="v-r">30</span>%</span>
+                        <span class="text-green">CALL: <span id="v-c">40</span>%</span>
+                        <span class="text-blue">FOLD: <span id="v-f">30</span>%</span>
+                    </div>
+                    <div class="slider-container" id="s-root">
+                        <div class="bar-raise" id="b-r" style="width: 30%;"></div>
+                        <div class="bar-call" id="b-c" style="left: 30%; width: 40%;"></div>
+                        <div class="handle" id="h1" style="left: 30%;"></div>
+                        <div class="handle" id="h2" style="left: 70%;"></div>
+                    </div>
+                </div>
+                <div id="matrix" class="matrix w-full max-w-[500px] rounded-lg overflow-hidden shadow-2xl"></div>
+            </div>
+
+            <div id="view-tr" class="hidden w-full max-w-md flex flex-col items-center gap-6">
+                <div id="alert" class="hidden w-full p-4 rounded-xl border flex items-center justify-center font-bold text-sm animate-bounce"></div>
+
+                <div class="poker-table">
+                    <div class="pos-node" style="top: -20px; left: 140px;" data-p="UTG">UTG</div>
+                    <div class="pos-node" style="top: 25px; right: -20px;" data-p="MP">MP</div>
+                    <div class="pos-node" style="bottom: 25px; right: -20px;" data-p="CO">CO</div>
+                    <div class="pos-node" style="bottom: -20px; left: 140px;" data-p="BTN">BTN</div>
+                    <div class="pos-node" style="bottom: 25px; left: -20px;" data-p="SB">SB</div>
+                    <div class="pos-node" style="top: 25px; left: -20px;" data-p="BB">BB</div>
+                </div>
+
+                <div id="cards-spot" class="flex gap-4 h-[100px]"></div>
+                
+                <div class="grid grid-cols-2 gap-3 w-full">
+                    <button onclick="handleAct('raise')" class="p-4 rounded-2xl bg-red/10 border border-red/20 text-red font-black hover:bg-red hover:text-base transition">RAISE</button>
+                    <button id="tr-call" onclick="handleAct('call')" class="p-4 rounded-2xl bg-green/10 border border-green/20 text-green font-black hover:bg-green hover:text-base transition">CALL</button>
+                    <button onclick="handleAct('fold')" class="p-4 rounded-2xl bg-blue/10 border border-blue/20 text-blue font-black hover:bg-blue hover:text-base transition col-span-2">FOLD</button>
+                </div>
+                <button id="next-btn" onclick="deal()" class="mt-4 py-3 px-10 bg-white text-base rounded-full font-black text-xs uppercase tracking-widest hidden shadow-xl shadow-white/10">Next Hand</button>
+            </div>
+
+            <div id="view-lib" class="hidden w-full max-w-xl text-center pt-20">
+                <div class="text-mauve text-5xl mb-4">📚</div>
+                <h2 class="text-xl font-bold">Library Module</h2>
+                <p class="opacity-50 mt-2">Here you will see your saved range collections.</p>
+            </div>
+        </div>
+    </main>
 
 <script>
     const RANKS = "AKQJT98765432".split("");
-    let rangeData = {}; 
-    let fR = 30, fC = 40; // Пропорции Raise и Call
+    const POS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
+    let rangeData = {}, stats = { ok: 0, err: 0 };
+    let fR = 30, fC = 40, currentHand = null;
 
-    // Инициализация слайдера
+    // Слайдер
     const h1 = document.getElementById('h1'), h2 = document.getElementById('h2'), sRoot = document.getElementById('s-root');
-    
-    function updateSliderUI() {
+    function updateUI() {
         document.getElementById('b-r').style.width = fR + '%';
         document.getElementById('b-c').style.left = fR + '%';
         document.getElementById('b-c').style.width = fC + '%';
-        h1.style.left = fR + '%';
-        h2.style.left = (fR + fC) + '%';
-        
+        h1.style.left = fR + '%'; h2.style.left = (fR + fC) + '%';
         document.getElementById('v-r').innerText = fR;
         document.getElementById('v-c').innerText = fC;
         document.getElementById('v-f').innerText = 100 - fR - fC;
@@ -98,15 +165,9 @@
                 let rect = sRoot.getBoundingClientRect();
                 let val = Math.round(((em.clientX - rect.left) / rect.width) * 100);
                 val = Math.max(0, Math.min(100, val));
-                
-                if (i === 0) { // Двигаем первую ручку (Рейз)
-                    let total = fR + fC;
-                    fR = Math.min(val, total);
-                    fC = total - fR;
-                } else { // Двигаем вторую ручку (Колл)
-                    fC = Math.max(0, val - fR);
-                }
-                updateSliderUI();
+                if (i === 0) { let tot = fR + fC; fR = Math.min(val, tot); fC = tot - fR; }
+                else { fC = Math.max(0, val - fR); }
+                updateUI();
             };
             window.onmousemove = move;
             window.onmouseup = () => window.onmousemove = null;
@@ -119,50 +180,88 @@
             RANKS.forEach((r2, j) => {
                 const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
                 const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.hand = combo;
+                cell.className = 'cell'; cell.dataset.hand = combo;
                 cell.innerHTML = `<div class="cell-bg"></div><div class="cell-text">${combo}</div>`;
-                
-                let drawing = false;
-                cell.onmousedown = (e) => { drawing=true; paint(cell); };
-                cell.onmouseenter = (e) => { if(e.buttons === 1) paint(cell); };
+                cell.onmousedown = () => { rangeData[combo] = {r: fR, c: fC}; renderMatrix(); };
+                cell.onmouseenter = (e) => { if(e.buttons === 1) { rangeData[combo] = {r: fR, c: fC}; renderMatrix(); } };
                 mx.appendChild(cell);
             });
         });
-        updateSliderUI();
-        renderMatrix();
-    }
-
-    function paint(cell) {
-        rangeData[cell.dataset.hand] = { r: fR, c: fC };
-        renderMatrix();
+        updateUI(); renderMatrix();
     }
 
     function renderMatrix() {
         document.querySelectorAll('.cell').forEach(c => {
-            const d = rangeData[c.dataset.hand] || { r: 0, c: 0 };
-            const bg = c.querySelector('.cell-bg');
-            // Рисуем пропорции в каждой клетке
-            bg.innerHTML = `
+            const d = rangeData[c.dataset.hand] || {r:0, c:0};
+            c.querySelector('.cell-bg').innerHTML = `
                 <div style="height:${d.r}%; background:var(--red)"></div>
                 <div style="height:${d.c}%; background:var(--green)"></div>
-                <div style="flex:1; background:var(--blue)"></div>
-            `;
+                <div style="flex:1; background:var(--blue)"></div>`;
         });
     }
 
     function setTab(t) {
-        document.getElementById('view-ed').classList.toggle('hidden', t!=='ed');
-        document.getElementById('view-tr').classList.toggle('hidden', t!=='tr');
-        document.getElementById('tab-ed').className = t==='ed' ? 'active-tab pb-1' : 'opacity-50 pb-1';
-        document.getElementById('tab-tr').className = t==='tr' ? 'active-tab pb-1' : 'opacity-50 pb-1';
+        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active', 'text-white/100'));
+        document.getElementById('tab-'+t).classList.add('active');
+        ['ed', 'tr', 'lib'].forEach(v => document.getElementById('view-'+v).classList.toggle('hidden', v!==t));
+        if(t==='tr') deal();
     }
 
-    // Сохранение/Загрузка
+    function syncUI() {
+        const m = document.getElementById('mode').value, h = document.getElementById('hero');
+        h.options[5].disabled = (m === 'RFI');
+    }
+
+    function deal() {
+        const m = document.getElementById('mode').value, heroPos = document.getElementById('hero').value;
+        document.getElementById('next-btn').classList.add('hidden');
+        document.getElementById('alert').classList.add('hidden');
+        document.getElementById('tr-call').classList.toggle('opacity-20', m==='RFI');
+
+        document.querySelectorAll('.pos-node').forEach(n => {
+            n.className = 'pos-node'; if(n.dataset.p === heroPos) n.classList.add('pos-hero');
+        });
+
+        const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
+        const s1 = ["s","h","c","d"][Math.floor(Math.random()*4)], s2 = ["s","h","c","d"][Math.floor(Math.random()*4)];
+        if (r1===r2 && s1===s2) return deal();
+        
+        const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
+        currentHand = { combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
+        const suits = {s:'♠', h:'♥', c:'♣', d:'♦'};
+        document.getElementById('cards-spot').innerHTML = `
+            <div class="card ${s1}"><div>${r1}</div><div class="text-3xl mt-auto self-end">${suits[s1]}</div></div>
+            <div class="card ${s2}"><div>${r2}</div><div class="text-3xl mt-auto self-end">${suits[s2]}</div></div>`;
+    }
+
+    function handleAct(uA) {
+        if (!document.getElementById('next-btn').classList.contains('hidden')) return;
+        const d = rangeData[currentHand.combo] || {r:0, c:0};
+        const isOk = (uA==='raise' && d.r>0) || (uA==='call' && d.c>0) || (uA==='fold' && (d.r+d.c)<100);
+        
+        const al = document.getElementById('alert');
+        al.classList.remove('hidden');
+        if(isOk) {
+            stats.ok++; al.className = "w-full p-4 rounded-xl flex items-center justify-center font-bold text-sm bg-green/10 text-green border-green/20";
+            al.innerText = "CORRECT"; setTimeout(deal, 800);
+        } else {
+            stats.err++; al.className = "w-full p-4 rounded-xl flex items-center justify-center font-bold text-sm bg-red/10 text-red border-red/20";
+            al.innerText = `WRONG! BEST: ${d.r > d.c ? 'RAISE' : (d.c>0?'CALL':'FOLD')}`;
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+        updateStats();
+    }
+
+    function updateStats() {
+        document.getElementById('stat-ok').innerText = stats.ok;
+        document.getElementById('stat-err').innerText = stats.err;
+        const total = stats.ok + stats.err;
+        document.getElementById('stat-bar').style.width = (stats.ok / total * 100) + '%';
+    }
+
     function exportJSON() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rangeData, null, 2));
-        const a = document.createElement('a');
-        a.href = dataStr;
+        const a = document.createElement('a'); a.href = dataStr;
         a.download = `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`;
         a.click();
     }
