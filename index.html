@@ -2,136 +2,194 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <title>Gemini Poker GTO</title>
+    <title>Gemini Poker GTO Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --base: #11111b; --surf: #1e1e2e; --overlay: #313244;
             --text: #cdd6f4; --mauve: #cba6f7; --red: #f38ba8;
             --green: #a6e3a1; --blue: #89b4fa; --peach: #fab387;
         }
-        body { background-color: var(--base); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; overflow: hidden; }
+        body { 
+            background-color: var(--base); color: var(--text); 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            height: 100vh; overflow: hidden; display: flex; 
+        }
         
-        /* Sidebar */
-        .sidebar-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer; }
-        .sidebar-item.active { background-color: var(--mauve); color: var(--base); font-weight: 800; }
-        .sidebar-item:not(.active):hover { background-color: var(--overlay); }
+        /* Sidebar Glass */
+        .sidebar { background: linear-gradient(180deg, #11111b 0%, #181825 100%); border-right: 1px solid var(--overlay); }
+        .nav-item { @apply flex items-center gap-3 px-5 py-3 rounded-2xl transition-all duration-300 cursor-pointer mb-2; opacity: 0.6; }
+        .nav-item:hover { opacity: 1; background: rgba(203, 166, 247, 0.1); }
+        .nav-item.active { opacity: 1; background: var(--mauve); color: var(--base); font-weight: 700; box-shadow: 0 4px 15px rgba(203, 166, 247, 0.3); }
 
         /* GTO Slider */
-        .slider-track { height: 32px; border-radius: 12px; position: relative; overflow: hidden; background: var(--blue); border: 2px solid var(--overlay); }
-        .handle { 
-            position: absolute; width: 12px; height: 40px; background: white; 
-            top: -4px; border-radius: 6px; cursor: col-resize; z-index: 30;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5); border: 2px solid var(--mauve);
+        .slider-track { height: 40px; border-radius: 14px; position: relative; overflow: hidden; background: var(--blue); border: 2px solid var(--overlay); }
+        .slider-handle { 
+            position: absolute; width: 14px; height: 100%; background: white; 
+            border-radius: 4px; cursor: col-resize; z-index: 30;
+            box-shadow: 0 0 10px rgba(0,0,0,0.4); border: 2px solid var(--mauve);
+            top: 0; transform: translateX(-50%);
         }
 
         /* Matrix 13x13 */
+        .matrix-container { display: grid; grid-template-columns: 20px 1fr; grid-template-rows: 20px 1fr; gap: 8px; }
         .matrix-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; }
-        .cell { aspect-ratio: 1; position: relative; overflow: hidden; cursor: pointer; border-radius: 2px; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+        .cell { aspect-ratio: 1; position: relative; overflow: hidden; cursor: pointer; border-radius: 4px; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .cell:hover { filter: brightness(1.2); transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         .cell-bg { position: absolute; inset: 0; display: flex; flex-direction: column; }
-        .cell-text { position: relative; z-index: 10; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+        .cell-text { position: relative; z-index: 10; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
 
-        /* Poker Cards */
-        .card { width: 75px; height: 105px; border-radius: 10px; @apply flex flex-col p-3 font-black text-white shadow-lg border border-white/10; }
-        .card.s { background: #313244; } .card.h { background: var(--red); }
-        .card.c { background: #238636; color: white; } .card.d { background: var(--blue); }
+        /* Table UI */
+        .table-oval { 
+            width: 320px; height: 160px; border: 4px solid var(--overlay); border-radius: 100px; 
+            background: radial-gradient(circle, #313244 0%, #11111b 100%); 
+            position: relative; box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
+        }
+        .pos-btn { 
+            position: absolute; width: 44px; height: 44px; border-radius: 50%; 
+            background: var(--surf); border: 2px solid var(--overlay);
+            @apply flex items-center justify-center text-[11px] font-black transition-all;
+        }
+        .pos-hero { border-color: var(--mauve); color: var(--mauve); box-shadow: 0 0 15px var(--mauve); transform: scale(1.1); }
+        .pos-villain { border-color: var(--red); color: var(--red); box-shadow: 0 0 15px var(--red); }
 
-        .btn-action { @apply p-4 rounded-2xl font-extrabold text-sm transition-all active:scale-95; border: 1px solid rgba(255,255,255,0.05); }
+        /* Cards */
+        .card { width: 85px; height: 120px; border-radius: 12px; @apply flex flex-col p-4 font-black shadow-2xl; transition: 0.3s; }
+        .card .suit { @apply text-4xl mt-auto self-end; }
+        .card.s { background: #313244; color: white; } 
+        .card.h { background: var(--red); color: white; }
+        .card.c { background: #238636; color: white; } 
+        .card.d { background: var(--blue); color: white; }
+
+        .btn-act { @apply py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-b-4; }
         .hidden { display: none !important; }
     </style>
 </head>
-<body class="flex">
+<body class="bg-base select-none">
 
-    <aside class="w-64 border-r border-overlay p-6 flex flex-col gap-8 bg-[#11111b] h-full">
-        <div class="px-4 text-2xl font-extrabold tracking-tighter text-mauve">GEMINI<span class="text-text">GTO</span></div>
+    <aside class="sidebar w-72 p-8 flex flex-col h-full">
+        <div class="mb-12">
+            <h1 class="text-3xl font-black tracking-tighter text-mauve">GTO<span class="text-white">MASTER</span></h1>
+            <p class="text-[10px] uppercase font-bold tracking-widest opacity-40 mt-1">Professional Range Trainer</p>
+        </div>
         
-        <nav class="flex flex-col gap-2">
-            <div onclick="switchView('ed')" id="tab-ed" class="sidebar-item active">
-                <span>Editor</span>
+        <nav class="flex-1">
+            <div onclick="switchView('ed')" id="tab-ed" class="nav-item active">
+                <span class="text-lg">Editor</span>
             </div>
-            <div onclick="switchView('lib')" id="tab-lib" class="sidebar-item">
-                <span>Library</span>
+            <div onclick="switchView('lib')" id="tab-lib" class="nav-item">
+                <span class="text-lg">Library</span>
             </div>
-            <div onclick="switchView('tr')" id="tab-tr" class="sidebar-item">
-                <span>Trainer</span>
+            <div onclick="switchView('tr')" id="tab-tr" class="nav-item">
+                <span class="text-lg">Trainer</span>
             </div>
         </nav>
 
-        <div class="mt-auto bg-surf p-4 rounded-2xl border border-overlay">
-            <div class="text-[10px] uppercase font-bold opacity-40 mb-3">Statistics</div>
-            <div class="flex flex-col gap-2">
-                <div class="flex justify-between"><span class="text-xs">Correct:</span> <span id="st-ok" class="text-green font-bold">0</span></div>
-                <div class="flex justify-between"><span class="text-xs">Wrong:</span> <span id="st-err" class="text-red font-bold">0</span></div>
-                <div class="h-1 bg-overlay rounded-full mt-1 overflow-hidden">
-                    <div id="st-bar" class="h-full bg-mauve w-0 transition-all"></div>
+        <div class="bg-surf/50 p-5 rounded-3xl border border-overlay backdrop-blur-md">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-[10px] font-black uppercase opacity-50">Accuracy</span>
+                <span id="acc-val" class="text-mauve font-bold">0%</span>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    <div class="text-[20px] font-black text-green" id="st-ok">0</div>
+                    <div class="text-[9px] uppercase opacity-40">Correct</div>
+                </div>
+                <div class="flex-1 text-right">
+                    <div class="text-[20px] font-black text-red" id="st-err">0</div>
+                    <div class="text-[9px] uppercase opacity-40">Mistakes</div>
                 </div>
             </div>
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main class="flex-1 flex flex-col relative">
         
-        <header id="config-bar" class="h-20 border-b border-overlay px-8 flex items-center justify-between bg-[#11111b]/50 backdrop-blur-md">
-            <div class="flex gap-4">
-                <select id="mode" onchange="syncUI()" class="bg-surf px-3 py-2 rounded-xl text-xs font-bold border border-overlay outline-none">
-                    <option value="RFI">RFI</option><option value="vsOpen">vs Open</option><option value="vs3bet">vs 3-Bet</option>
-                </select>
-                <select id="hero" onchange="syncUI()" class="bg-surf px-3 py-2 rounded-xl text-xs font-bold border border-overlay outline-none">
+        <header class="h-24 px-10 flex items-center justify-between border-b border-overlay bg-base/80 backdrop-blur-xl z-20">
+            <div class="flex gap-6 items-center">
+                <div class="group">
+                    <select id="mode" onchange="syncUI()" class="bg-surf px-4 py-2.5 rounded-xl text-xs font-black border border-overlay outline-none focus:border-mauve transition-all">
+                        <option value="RFI">RFI</option><option value="vsOpen">vs Open</option><option value="vs3bet">vs 3-Bet</option>
+                    </select>
+                </div>
+                <select id="hero" onchange="syncUI()" class="bg-surf px-4 py-2.5 rounded-xl text-xs font-black border border-overlay outline-none">
                     <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
                 </select>
-                <select id="villain" class="bg-surf px-3 py-2 rounded-xl text-xs font-bold border border-overlay outline-none w-20"></select>
-                <label class="flex items-center gap-2 cursor-pointer ml-4">
+                <div id="v-box" class="flex items-center gap-3">
+                    <span class="text-[10px] font-black opacity-30 uppercase">vs</span>
+                    <select id="villain" class="bg-surf px-4 py-2.5 rounded-xl text-xs font-black border border-overlay outline-none w-20"></select>
+                </div>
+                <label class="flex items-center gap-3 cursor-pointer bg-surf/30 px-4 py-2.5 rounded-xl border border-overlay hover:border-mauve transition-all">
                     <input type="checkbox" id="rnd-hero" class="w-4 h-4 accent-mauve">
-                    <span class="text-[10px] uppercase font-bold opacity-60">Random Hero</span>
+                    <span class="text-[10px] font-bold uppercase opacity-60">Randomize Spot</span>
                 </label>
             </div>
-            <div class="flex gap-2">
-                <button id="start-btn" onclick="startTrainer()" class="bg-mauve text-base px-6 py-2 rounded-xl font-bold text-xs">Start Session</button>
-                <button id="stop-btn" onclick="stopTrainer()" class="bg-red text-base px-6 py-2 rounded-xl font-bold text-xs hidden">Stop</button>
+            
+            <div class="flex gap-4">
+                <button id="start-btn" onclick="startTrainer()" class="bg-mauve text-base px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-mauve/20">Start</button>
+                <button id="stop-btn" onclick="stopTrainer()" class="bg-red text-base px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hidden">Stop Session</button>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
+        <div class="flex-1 overflow-y-auto p-10 flex flex-col items-center justify-center">
             
-            <div id="view-ed" class="w-full flex flex-col items-center gap-8">
-                <div class="w-full max-w-xl bg-surf p-6 rounded-3xl border border-overlay shadow-2xl">
-                    <div class="flex justify-between text-xs font-black mb-4">
-                        <span class="text-red">RAISE: <span id="v-r">30</span>%</span>
-                        <span class="text-green">CALL: <span id="v-c">40</span>%</span>
-                        <span class="text-blue">FOLD: <span id="v-f">30</span>%</span>
+            <div id="view-ed" class="w-full max-w-4xl flex flex-col items-center gap-10">
+                <div class="w-full max-w-xl bg-surf p-8 rounded-[32px] border border-overlay shadow-2xl relative overflow-hidden">
+                    <div class="flex justify-between text-[11px] font-black mb-6 px-1 tracking-tighter">
+                        <span class="text-red">RAISE: <span id="v-r" class="text-lg">30</span>%</span>
+                        <span class="text-green">CALL: <span id="v-c" class="text-lg">40</span>%</span>
+                        <span class="text-blue">FOLD: <span id="v-f" class="text-lg">30</span>%</span>
                     </div>
                     <div class="slider-track" id="slider-root">
                         <div class="absolute h-full bg-red transition-all" id="bar-r" style="width: 30%"></div>
                         <div class="absolute h-full bg-green transition-all" id="bar-c" style="left: 30%; width: 40%"></div>
-                        <div class="handle" id="h1" style="left: 30%"></div>
-                        <div class="handle" id="h2" style="left: 70%"></div>
+                        <div class="slider-handle" id="h1" style="left: 30%"></div>
+                        <div class="slider-handle" id="h2" style="left: 70%"></div>
+                    </div>
+                    <div class="mt-8 flex gap-4">
+                        <button onclick="saveChart()" class="flex-1 bg-overlay py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-mauve hover:text-base transition-all">Export JSON</button>
+                        <button onclick="rangeData={}; renderMatrix()" class="px-6 bg-red/10 text-red border border-red/20 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-red hover:text-base transition-all">Clear</button>
                     </div>
                 </div>
-                <div id="matrix" class="matrix-grid w-full max-w-[580px] bg-overlay p-[2px] rounded-lg"></div>
+
+                <div class="matrix-container">
+                    <div></div><div class="flex justify-between px-2 text-[10px] font-bold opacity-30" id="matrix-top"></div>
+                    <div class="flex flex-col justify-between py-2 text-[10px] font-bold opacity-30" id="matrix-left"></div>
+                    <div id="matrix" class="matrix-grid w-[550px] bg-overlay p-[2px] rounded-xl overflow-hidden shadow-2xl"></div>
+                </div>
             </div>
 
-            <div id="view-tr" class="hidden w-full flex flex-col items-center gap-10">
-                <div id="alert" class="hidden w-full max-w-md p-4 rounded-2xl flex items-center gap-3 animate-bounce"></div>
+            <div id="view-tr" class="hidden w-full flex flex-col items-center gap-12">
+                <div id="toast" class="opacity-0 transition-all duration-300 fixed top-28 px-8 py-4 rounded-2xl font-black text-sm z-50"></div>
 
-                <div class="flex gap-16 items-center">
-                    <div class="relative w-64 h-32 border-4 border-overlay rounded-[100px] flex items-center justify-center">
-                        <div id="node-h" class="absolute -top-5 left-1/2 -translate-x-1/2 px-3 py-1 bg-mauve text-base text-[10px] font-black rounded-full">HERO</div>
-                        <div id="node-v" class="absolute -bottom-5 left-1/2 -translate-x-1/2 px-3 py-1 bg-red text-base text-[10px] font-black rounded-full">VILLAIN</div>
-                        <div class="text-center">
-                            <div class="text-[10px] opacity-40 font-bold uppercase">Spot</div>
-                            <div id="spot-txt" class="text-lg font-black tracking-tighter"></div>
+                <div class="flex gap-20 items-center">
+                    <div class="table-oval">
+                        <div class="pos-btn" style="top: -22px; left: 138px;" data-p="UTG">UTG</div>
+                        <div class="pos-btn" style="top: 25px; right: -22px;" data-p="MP">MP</div>
+                        <div class="pos-btn" style="bottom: 25px; right: -22px;" data-p="CO">CO</div>
+                        <div class="pos-btn" style="bottom: -22px; left: 138px;" data-p="BTN">BTN</div>
+                        <div class="pos-btn" style="bottom: 25px; left: -22px;" data-p="SB">SB</div>
+                        <div class="pos-btn" style="top: 25px; left: -22px;" data-p="BB">BB</div>
+                        
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="text-[10px] font-black opacity-20 uppercase tracking-[0.3em]">Current Spot</div>
+                            <div id="spot-label" class="text-xl font-black text-mauve">UTG (RFI)</div>
                         </div>
                     </div>
-                    <div id="cards-spot" class="flex gap-4"></div>
+
+                    <div id="cards-spot" class="flex gap-4 animate-in slide-in-from-right duration-500"></div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 w-full max-w-md">
-                    <button onclick="tAct('raise')" class="btn-action bg-red/10 text-red hover:bg-red hover:text-base">RAISE</button>
-                    <button id="t-call" onclick="tAct('call')" class="btn-action bg-green/10 text-green hover:bg-green hover:text-base">CALL</button>
-                    <button onclick="tAct('fold')" class="btn-action bg-blue/10 text-blue hover:bg-blue hover:text-base col-span-2">FOLD</button>
+                <div class="flex flex-col gap-4 w-full max-w-sm">
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="tAct('raise')" class="btn-act bg-red/10 text-red border-red-500/20 hover:bg-red hover:text-base active:border-b-0">Raise <span class="opacity-50 text-[10px] block">[1]</span></button>
+                        <button id="tr-call" onclick="tAct('call')" class="btn-act bg-green/10 text-green border-green-500/20 hover:bg-green hover:text-base active:border-b-0">Call <span class="opacity-50 text-[10px] block">[2]</span></button>
+                    </div>
+                    <button onclick="tAct('fold')" class="btn-act bg-blue/10 text-blue border-blue-500/20 hover:bg-blue hover:text-base active:border-b-0">Fold <span class="opacity-50 text-[10px] block">[3]</span></button>
                 </div>
-                <button id="nxt" onclick="deal()" class="hidden bg-white text-base px-12 py-3 rounded-full font-black text-xs uppercase tracking-widest">Next Hand</button>
+                
+                <button id="nxt-btn" onclick="deal()" class="hidden bg-white text-base px-16 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-105 transition-all">Next Hand [Space]</button>
             </div>
         </div>
     </main>
@@ -139,18 +197,17 @@
 <script>
     const RANKS = "AKQJT98765432".split("");
     const POS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
-    let rangeData = {}, stats = { ok: 0, err: 0 }, trainerRunning = false;
+    let rangeData = {}, stats = { ok: 0, err: 0 }, trainerRunning = false, activeV = 'ed';
     
-    // Slider Logic
-    let f1 = 30, f2 = 70;
-    const root = document.getElementById('slider-root');
-    const h1 = document.getElementById('h1'), h2 = document.getElementById('h2');
+    // SLIDER LOGIC
+    let f1 = 100, f2 = 100; // По умолчанию 100% Raise
+    const h1 = document.getElementById('h1'), h2 = document.getElementById('h2'), sRoot = document.getElementById('slider-root');
 
-    function updateBars() {
+    function updateFills() {
         document.getElementById('bar-r').style.width = f1 + '%';
         document.getElementById('bar-c').style.left = f1 + '%';
         document.getElementById('bar-c').style.width = (f2 - f1) + '%';
-        h1.style.left = `calc(${f1}% - 6px)`; h2.style.left = `calc(${f2}% - 6px)`;
+        h1.style.left = f1 + '%'; h2.style.left = f2 + '%';
         document.getElementById('v-r').innerText = f1;
         document.getElementById('v-c').innerText = f2 - f1;
         document.getElementById('v-f').innerText = 100 - f2;
@@ -159,19 +216,28 @@
     [h1, h2].forEach((h, i) => {
         h.onmousedown = (e) => {
             const move = (em) => {
-                let rect = root.getBoundingClientRect();
+                let rect = sRoot.getBoundingClientRect();
                 let x = Math.round(((em.clientX - rect.left) / rect.width) * 100);
                 x = Math.max(0, Math.min(100, x));
                 if (i === 0) f1 = Math.min(x, f2); else f2 = Math.max(x, f1);
-                updateBars();
+                updateFills();
             };
             window.onmousemove = move;
             window.onmouseup = () => window.onmousemove = null;
         };
     });
 
+    // INIT MATRIX
     function init() {
         const mx = document.getElementById('matrix');
+        const mTop = document.getElementById('matrix-top');
+        const mLeft = document.getElementById('matrix-left');
+        
+        RANKS.forEach(r => {
+            mTop.innerHTML += `<span>${r}</span>`;
+            mLeft.innerHTML += `<span>${r}</span>`;
+        });
+
         RANKS.forEach((r1, i) => {
             RANKS.forEach((r2, j) => {
                 const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
@@ -182,7 +248,7 @@
                 mx.appendChild(cell);
             });
         });
-        renderMatrix(); syncUI(); updateBars();
+        updateFills(); syncUI(); renderMatrix();
     }
 
     function renderMatrix() {
@@ -195,12 +261,14 @@
         });
     }
 
+    // NAVIGATION
     function switchView(v) {
-        if(trainerRunning && v !== 'tr') return showAlert("Stop trainer first!", "red");
-        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+        if(trainerRunning && v !== 'tr') { showToast("Stop trainer first!", "red"); return; }
+        activeV = v;
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('tab-'+v).classList.add('active');
-        document.getElementById('view-ed').classList.toggle('hidden', v==='tr');
-        document.getElementById('view-tr').classList.toggle('hidden', v!=='tr');
+        document.getElementById('view-ed').classList.toggle('hidden', v === 'tr');
+        document.getElementById('view-tr').classList.toggle('hidden', v !== 'tr');
     }
 
     function syncUI() {
@@ -211,13 +279,15 @@
         const idx = POS.indexOf(h.value);
         if(m === 'vsOpen') POS.slice(0, idx).forEach(p => v.add(new Option(p,p)));
         if(m === 'vs3bet') POS.slice(idx + 1).forEach(p => v.add(new Option(p,p)));
-        v.parentElement.classList.toggle('hidden', m==='RFI');
+        document.getElementById('v-box').classList.toggle('hidden', m==='RFI');
     }
 
+    // TRAINER CORE
     function startTrainer() {
         trainerRunning = true;
         document.getElementById('start-btn').classList.add('hidden');
         document.getElementById('stop-btn').classList.remove('hidden');
+        document.querySelectorAll('header select, header input').forEach(el => el.disabled = true);
         switchView('tr'); deal();
     }
 
@@ -225,54 +295,95 @@
         trainerRunning = false;
         document.getElementById('start-btn').classList.remove('hidden');
         document.getElementById('stop-btn').classList.add('hidden');
-        document.getElementById('alert').classList.add('hidden');
+        document.querySelectorAll('header select, header input').forEach(el => el.disabled = false);
+        document.getElementById('toast').className = 'opacity-0';
     }
 
     function deal() {
+        const m = document.getElementById('mode').value;
         if(document.getElementById('rnd-hero').checked) {
-            document.getElementById('hero').value = POS[Math.floor(Math.random()*6)];
+            let hIdx = m === 'RFI' ? Math.floor(Math.random()*5) : Math.floor(Math.random()*6);
+            document.getElementById('hero').value = POS[hIdx];
             syncUI();
+            if(m !== 'RFI') {
+                const v = document.getElementById('villain');
+                v.selectedIndex = Math.floor(Math.random() * v.options.length);
+            }
         }
-        const m = document.getElementById('mode').value, h = document.getElementById('hero').value, v = document.getElementById('villain').value;
-        document.getElementById('nxt').classList.add('hidden');
-        document.getElementById('alert').classList.add('hidden');
-        document.getElementById('spot-txt').innerText = m === 'RFI' ? `${h} (RFI)` : `${h} vs ${v}`;
-        document.getElementById('t-call').classList.toggle('opacity-20', m==='RFI');
+        
+        const hPos = document.getElementById('hero').value, vPos = document.getElementById('villain').value;
+        document.getElementById('nxt-btn').classList.add('hidden');
+        document.getElementById('toast').style.opacity = '0';
+        document.getElementById('tr-call').classList.toggle('opacity-20', m==='RFI');
+        document.getElementById('spot-label').innerText = m==='RFI' ? `${hPos} (RFI)` : `${hPos} vs ${vPos}`;
+
+        document.querySelectorAll('.pos-btn').forEach(n => {
+            n.className = 'pos-btn';
+            if(n.dataset.p === hPos) n.classList.add('pos-hero');
+            if(m !== 'RFI' && n.dataset.p === vPos) n.classList.add('pos-villain');
+        });
 
         const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
-        const s1 = ["s","h","c","d"][Math.floor(Math.random()*4)], s2 = ["s","h","c","d"][Math.floor(Math.random()*4)];
+        const suits = ['s','h','c','d'], s1 = suits[Math.floor(Math.random()*4)], s2 = suits[Math.floor(Math.random()*4)];
         if(r1===r2 && s1===s2) return deal();
         
         const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
         currentHand = { combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
-        const suits = {s:'♠', h:'♥', c:'♣', d:'♦'};
+        const icons = {s:'♠', h:'♥', c:'♣', d:'♦'};
+        
+        // Показываем старшую карту ПЕРВОЙ
+        let d1 = r1, d2 = r2, ds1 = s1, ds2 = s2;
+        if(i1 > i2) { [d1, d2] = [r2, r1]; [ds1, ds2] = [s2, s1]; }
+
         document.getElementById('cards-spot').innerHTML = `
-            <div class="card ${s1}"><div>${r1}</div><div class="text-3xl mt-auto self-end">${suits[s1]}</div></div>
-            <div class="card ${s2}"><div>${r2}</div><div class="text-3xl mt-auto self-end">${suits[s2]}</div></div>`;
+            <div class="card ${ds1}"><div>${d1}</div><div class="suit">${icons[ds1]}</div></div>
+            <div class="card ${ds2}"><div>${d2}</div><div class="suit">${icons[ds2]}</div></div>`;
     }
 
     function tAct(uA) {
-        if(!document.getElementById('nxt').classList.contains('hidden')) return;
+        if(!document.getElementById('nxt-btn').classList.contains('hidden')) return;
         const d = rangeData[currentHand.combo] || {r:0, c:0};
-        let win = (uA==='raise' && d.r>0) || (uA==='call' && d.c>0) || (uA==='fold' && (d.r+d.c)<100);
+        const isOk = (uA==='raise' && d.r>0) || (uA==='call' && d.c>0) || (uA==='fold' && (d.r+d.c)<100);
         
-        if(win) { stats.ok++; showAlert("CORRECT ACTION", "green"); setTimeout(deal, 800); }
-        else { stats.err++; showAlert(`WRONG: Best was ${d.r > d.c ? 'RAISE' : (d.c>0?'CALL':'FOLD')}`, "red"); document.getElementById('nxt').classList.remove('hidden'); }
+        if(isOk) {
+            stats.ok++; showToast("PERFECT", "green"); setTimeout(deal, 600);
+        } else {
+            stats.err++; 
+            const best = d.r > d.c ? "RAISE" : (d.c > 0 ? "CALL" : "FOLD");
+            showToast(`MISTAKE • BEST WAS ${best}`, "red");
+            document.getElementById('nxt-btn').classList.remove('hidden');
+        }
         updateStats();
     }
 
     function updateStats() {
         document.getElementById('st-ok').innerText = stats.ok;
         document.getElementById('st-err').innerText = stats.err;
-        const perc = (stats.ok / (stats.ok + stats.err)) * 100 || 0;
-        document.getElementById('st-bar').style.width = perc + '%';
+        const total = stats.ok + stats.err;
+        document.getElementById('acc-val').innerText = total ? Math.round((stats.ok / total) * 100) + '%' : '0%';
     }
 
-    function showAlert(txt, clr) {
-        const a = document.getElementById('alert');
-        a.className = `w-full max-w-md p-4 rounded-2xl flex items-center justify-center font-black text-xs bg-${clr}/20 text-${clr} border border-${clr}/30`;
-        a.innerText = txt; a.classList.remove('hidden');
+    function showToast(txt, clr) {
+        const t = document.getElementById('toast');
+        t.innerText = txt;
+        t.className = `fixed top-28 px-10 py-4 rounded-2xl font-black text-xs tracking-widest z-50 transition-all duration-300 shadow-2xl bg-${clr} text-base opacity-100`;
     }
+
+    function saveChart() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rangeData));
+        const a = document.createElement('a'); a.setAttribute("href", dataStr);
+        a.setAttribute("download", `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`);
+        a.click();
+    }
+
+    // HOTKEYS
+    window.onkeydown = (e) => {
+        if(!trainerRunning) return;
+        if(e.key === '1') tAct('raise');
+        if(e.key === '2') tAct('call');
+        if(e.key === '3') tAct('fold');
+        if(e.key === ' ' && !document.getElementById('nxt-btn').classList.contains('hidden')) deal();
+    };
 
     init();
 </script>
