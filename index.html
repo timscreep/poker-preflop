@@ -2,174 +2,166 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <title>GTO Range Master</title>
+    <title>Gemini Poker GTO</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --base: #1e1e2e; --surface: #313244; --overlay: #45475a;
-            --text: #cdd6f4; --subtext: #a6adc8; --blue: #89b4fa;
-            --red: #f38ba8; --green: #a6e3a1; --yellow: #f9e2af; --mauve: #cba6f7;
+            --base: #11111b; --surf: #1e1e2e; --overlay: #313244;
+            --text: #cdd6f4; --mauve: #cba6f7; --red: #f38ba8;
+            --green: #a6e3a1; --blue: #89b4fa; --peach: #fab387;
         }
-        body { background-color: var(--base); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        body { background-color: var(--base); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; overflow: hidden; }
         
-        /* Стилизация слайдера как в GTO Wizard */
-        .freq-slider-container {
-            width: 100%; height: 24px; background: var(--blue); position: relative;
-            border-radius: 6px; overflow: hidden; cursor: pointer;
-        }
-        .freq-bar-raise { position: absolute; height: 100%; background: var(--red); left: 0; }
-        .freq-bar-call { position: absolute; height: 100%; background: var(--green); }
-        .handle {
-            position: absolute; width: 4px; height: 100%; background: white;
-            cursor: col-resize; top: 0; z-index: 20; box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        /* Sidebar */
+        .sidebar-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer; }
+        .sidebar-item.active { background-color: var(--mauve); color: var(--base); font-weight: 800; }
+        .sidebar-item:not(.active):hover { background-color: var(--overlay); }
+
+        /* GTO Slider */
+        .slider-track { height: 32px; border-radius: 12px; position: relative; overflow: hidden; background: var(--blue); border: 2px solid var(--overlay); }
+        .handle { 
+            position: absolute; width: 12px; height: 40px; background: white; 
+            top: -4px; border-radius: 6px; cursor: col-resize; z-index: 30;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); border: 2px solid var(--mauve);
         }
 
-        /* Матрица */
-        .cell {
-            aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; 
-            justify-content: center; font-size: 10px; font-weight: 600; cursor: pointer;
-            position: relative; overflow: hidden; transition: transform 0.1s;
-        }
-        .cell:hover { transform: scale(1.05); z-index: 10; }
+        /* Matrix 13x13 */
+        .matrix-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; }
+        .cell { aspect-ratio: 1; position: relative; overflow: hidden; cursor: pointer; border-radius: 2px; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
         .cell-bg { position: absolute; inset: 0; display: flex; flex-direction: column; }
-        .cell-text { position: relative; z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .cell-text { position: relative; z-index: 10; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
 
-        /* Таблица */
-        .poker-table {
-            width: 100%; max-width: 340px; height: 180px; border: 6px solid var(--overlay);
-            border-radius: 100px; position: relative; background: radial-gradient(#313244, #181825);
-        }
-        .pos-node {
-            position: absolute; width: 42px; height: 42px; border-radius: 50%;
-            background: var(--surface); border: 2px solid var(--overlay);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 800; color: var(--subtext);
-        }
-        .pos-hero { border-color: var(--mauve); color: var(--mauve); box-shadow: 0 0 15px var(--mauve); }
-        .pos-villain { border-color: var(--red); color: var(--red); }
+        /* Poker Cards */
+        .card { width: 75px; height: 105px; border-radius: 10px; @apply flex flex-col p-3 font-black text-white shadow-lg border border-white/10; }
+        .card.s { background: #313244; } .card.h { background: var(--red); }
+        .card.c { background: #238636; color: white; } .card.d { background: var(--blue); }
 
-        /* Карты */
-        .card { width: 80px; height: 115px; border-radius: 8px; padding: 10px; font-weight: 800; color: white; border: 1px solid rgba(255,255,255,0.1); }
-        .card.s { background: #45475a; } 
-        .card.h { background: var(--red); }
-        .card.c { background: var(--green); color: white; }
-        .card.d { background: var(--blue); }
-
-        .btn-primary { background: var(--mauve); color: var(--base); font-weight: 800; padding: 10px 20px; border-radius: 8px; transition: 0.2s; }
-        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-stop { background: var(--red); color: var(--base); font-weight: 800; padding: 10px 20px; border-radius: 8px; }
-
+        .btn-action { @apply p-4 rounded-2xl font-extrabold text-sm transition-all active:scale-95; border: 1px solid rgba(255,255,255,0.05); }
         .hidden { display: none !important; }
     </style>
 </head>
-<body class="flex flex-col items-center min-h-screen pb-10">
+<body class="flex">
 
-    <nav class="w-full bg-[#11111b] p-4 flex justify-center gap-6 border-b border-surface">
-        <button onclick="switchView('ed')" class="nav-link font-bold text-sm opacity-50">Editor</button>
-        <button onclick="switchView('lib')" class="nav-link font-bold text-sm opacity-50">Library</button>
-        <button onclick="switchView('tr')" class="nav-link font-bold text-sm opacity-50">Trainer</button>
-    </nav>
-
-    <div id="config-bar" class="w-full max-w-4xl p-6 flex flex-wrap gap-4 justify-center items-end">
-        <div class="flex flex-col gap-2">
-            <label class="text-[10px] font-bold uppercase opacity-50">Mode</label>
-            <select id="mode" onchange="syncPositions()" class="bg-surface p-2 rounded-lg outline-none text-sm border border-overlay">
-                <option value="RFI">RFI</option>
-                <option value="vsOpen">vs Open</option>
-                <option value="vs3bet">vs 3-Bet</option>
-            </select>
-        </div>
-        <div class="flex flex-col gap-2">
-            <label class="text-[10px] font-bold uppercase opacity-50">Hero</label>
-            <select id="hero" onchange="syncPositions()" class="bg-surface p-2 rounded-lg outline-none text-sm border border-overlay">
-                <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
-            </select>
-        </div>
-        <div id="v-container" class="flex flex-col gap-2">
-            <label class="text-[10px] font-bold uppercase opacity-50">Villain</label>
-            <select id="villain" class="bg-surface p-2 rounded-lg outline-none text-sm border border-overlay w-20"></select>
-        </div>
-        <button id="start-btn" onclick="startTrainer()" class="btn-primary">Приступить</button>
-        <button id="stop-btn" onclick="stopTrainer()" class="btn-stop hidden">Остановить</button>
-    </div>
-
-    <main class="w-full max-w-5xl flex flex-col items-center px-4">
+    <aside class="w-64 border-r border-overlay p-6 flex flex-col gap-8 bg-[#11111b] h-full">
+        <div class="px-4 text-2xl font-extrabold tracking-tighter text-mauve">GEMINI<span class="text-text">GTO</span></div>
         
-        <div id="view-matrix" class="w-full flex flex-col items-center gap-6">
-            <div class="w-full max-w-md bg-surface p-4 rounded-xl border border-overlay shadow-xl">
-                <div class="flex justify-between text-[10px] font-black mb-2 px-1">
-                    <span class="text-red">RAISE: <span id="val-r">30</span>%</span>
-                    <span class="text-green">CALL: <span id="val-c">40</span>%</span>
-                    <span class="text-blue">FOLD: <span id="val-f">30</span>%</span>
-                </div>
-                <div class="freq-slider-container" id="slider-root">
-                    <div class="freq-bar-raise" id="bar-r" style="width: 30%;"></div>
-                    <div class="freq-bar-call" id="bar-c" style="left: 30%; width: 40%;"></div>
-                    <div class="handle" id="handle-1" style="left: 30%;"></div>
-                    <div class="handle" id="handle-2" style="left: 70%;"></div>
-                </div>
-                <div class="mt-4 flex gap-2">
-                    <button onclick="loadChart()" class="text-[10px] bg-overlay px-3 py-1 rounded">Загрузить из файла</button>
-                    <button onclick="saveChart()" class="text-[10px] bg-overlay px-3 py-1 rounded">Сохранить</button>
+        <nav class="flex flex-col gap-2">
+            <div onclick="switchView('ed')" id="tab-ed" class="sidebar-item active">
+                <span>Editor</span>
+            </div>
+            <div onclick="switchView('lib')" id="tab-lib" class="sidebar-item">
+                <span>Library</span>
+            </div>
+            <div onclick="switchView('tr')" id="tab-tr" class="sidebar-item">
+                <span>Trainer</span>
+            </div>
+        </nav>
+
+        <div class="mt-auto bg-surf p-4 rounded-2xl border border-overlay">
+            <div class="text-[10px] uppercase font-bold opacity-40 mb-3">Statistics</div>
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between"><span class="text-xs">Correct:</span> <span id="st-ok" class="text-green font-bold">0</span></div>
+                <div class="flex justify-between"><span class="text-xs">Wrong:</span> <span id="st-err" class="text-red font-bold">0</span></div>
+                <div class="h-1 bg-overlay rounded-full mt-1 overflow-hidden">
+                    <div id="st-bar" class="h-full bg-mauve w-0 transition-all"></div>
                 </div>
             </div>
-            <div id="matrix" class="grid grid-cols-13 gap-1 bg-overlay p-1 rounded-lg w-full max-w-[550px]"></div>
         </div>
+    </aside>
 
-        <div id="view-trainer" class="hidden w-full flex flex-col items-center gap-8 animate-in fade-in">
-            <div class="poker-table">
-                <div class="pos-node" style="top: -21px; left: 149px;" data-p="UTG">UTG</div>
-                <div class="pos-node" style="top: 25px; right: -21px;" data-p="MP">MP</div>
-                <div class="pos-node" style="bottom: 25px; right: -21px;" data-p="CO">CO</div>
-                <div class="pos-node" style="bottom: -21px; left: 149px;" data-p="BTN">BTN</div>
-                <div class="pos-node" style="bottom: 25px; left: -21px;" data-p="SB">SB</div>
-                <div class="pos-node" style="top: 25px; left: -21px;" data-p="BB">BB</div>
+    <main class="flex-1 flex flex-col overflow-hidden">
+        
+        <header id="config-bar" class="h-20 border-b border-overlay px-8 flex items-center justify-between bg-[#11111b]/50 backdrop-blur-md">
+            <div class="flex gap-4">
+                <select id="mode" onchange="syncUI()" class="bg-surf px-3 py-2 rounded-xl text-xs font-bold border border-overlay outline-none">
+                    <option value="RFI">RFI</option><option value="vsOpen">vs Open</option><option value="vs3bet">vs 3-Bet</option>
+                </select>
+                <select id="hero" onchange="syncUI()" class="bg-surf px-3 py-2 rounded-xl text-xs font-bold border border-overlay outline-none">
+                    <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
+                </select>
+                <select id="villain" class="bg-surf px-3 py-2 rounded-xl text-xs font-bold border border-overlay outline-none w-20"></select>
+                <label class="flex items-center gap-2 cursor-pointer ml-4">
+                    <input type="checkbox" id="rnd-hero" class="w-4 h-4 accent-mauve">
+                    <span class="text-[10px] uppercase font-bold opacity-60">Random Hero</span>
+                </label>
             </div>
+            <div class="flex gap-2">
+                <button id="start-btn" onclick="startTrainer()" class="bg-mauve text-base px-6 py-2 rounded-xl font-bold text-xs">Start Session</button>
+                <button id="stop-btn" onclick="stopTrainer()" class="bg-red text-base px-6 py-2 rounded-xl font-bold text-xs hidden">Stop</button>
+            </div>
+        </header>
 
-            <div id="cards-spot" class="flex gap-4"></div>
+        <div class="flex-1 overflow-y-auto p-8 flex flex-col items-center">
             
-            <div id="feedback" class="h-10 text-center font-bold"></div>
-
-            <div class="grid grid-cols-2 gap-4 w-full max-w-sm">
-                <button onclick="tAct('raise')" class="p-4 rounded-xl bg-red/10 border border-red/20 text-red font-black hover:bg-red hover:text-base transition">RAISE</button>
-                <button id="t-call-btn" onclick="tAct('call')" class="p-4 rounded-xl bg-green/10 border border-green/20 text-green font-black hover:bg-green hover:text-base transition">CALL</button>
-                <button onclick="tAct('fold')" class="p-4 rounded-xl bg-blue/10 border border-blue/20 text-blue font-black hover:bg-blue hover:text-base transition col-span-2">FOLD</button>
+            <div id="view-ed" class="w-full flex flex-col items-center gap-8">
+                <div class="w-full max-w-xl bg-surf p-6 rounded-3xl border border-overlay shadow-2xl">
+                    <div class="flex justify-between text-xs font-black mb-4">
+                        <span class="text-red">RAISE: <span id="v-r">30</span>%</span>
+                        <span class="text-green">CALL: <span id="v-c">40</span>%</span>
+                        <span class="text-blue">FOLD: <span id="v-f">30</span>%</span>
+                    </div>
+                    <div class="slider-track" id="slider-root">
+                        <div class="absolute h-full bg-red transition-all" id="bar-r" style="width: 30%"></div>
+                        <div class="absolute h-full bg-green transition-all" id="bar-c" style="left: 30%; width: 40%"></div>
+                        <div class="handle" id="h1" style="left: 30%"></div>
+                        <div class="handle" id="h2" style="left: 70%"></div>
+                    </div>
+                </div>
+                <div id="matrix" class="matrix-grid w-full max-w-[580px] bg-overlay p-[2px] rounded-lg"></div>
             </div>
-            <button id="next-btn" onclick="deal()" class="hidden bg-white text-base px-10 py-3 rounded-full font-black text-xs tracking-widest">NEXT</button>
+
+            <div id="view-tr" class="hidden w-full flex flex-col items-center gap-10">
+                <div id="alert" class="hidden w-full max-w-md p-4 rounded-2xl flex items-center gap-3 animate-bounce"></div>
+
+                <div class="flex gap-16 items-center">
+                    <div class="relative w-64 h-32 border-4 border-overlay rounded-[100px] flex items-center justify-center">
+                        <div id="node-h" class="absolute -top-5 left-1/2 -translate-x-1/2 px-3 py-1 bg-mauve text-base text-[10px] font-black rounded-full">HERO</div>
+                        <div id="node-v" class="absolute -bottom-5 left-1/2 -translate-x-1/2 px-3 py-1 bg-red text-base text-[10px] font-black rounded-full">VILLAIN</div>
+                        <div class="text-center">
+                            <div class="text-[10px] opacity-40 font-bold uppercase">Spot</div>
+                            <div id="spot-txt" class="text-lg font-black tracking-tighter"></div>
+                        </div>
+                    </div>
+                    <div id="cards-spot" class="flex gap-4"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 w-full max-w-md">
+                    <button onclick="tAct('raise')" class="btn-action bg-red/10 text-red hover:bg-red hover:text-base">RAISE</button>
+                    <button id="t-call" onclick="tAct('call')" class="btn-action bg-green/10 text-green hover:bg-green hover:text-base">CALL</button>
+                    <button onclick="tAct('fold')" class="btn-action bg-blue/10 text-blue hover:bg-blue hover:text-base col-span-2">FOLD</button>
+                </div>
+                <button id="nxt" onclick="deal()" class="hidden bg-white text-base px-12 py-3 rounded-full font-black text-xs uppercase tracking-widest">Next Hand</button>
+            </div>
         </div>
     </main>
 
 <script>
     const RANKS = "AKQJT98765432".split("");
     const POS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
-    let rangeData = {};
-    let activeView = 'ed';
-    let trainerRunning = false;
-    let currentHand = null;
-
-    // Слайдер частот
-    let f1 = 30, f2 = 70; // позиции ручек в %
-    const h1 = document.getElementById('handle-1'), h2 = document.getElementById('handle-2');
+    let rangeData = {}, stats = { ok: 0, err: 0 }, trainerRunning = false;
+    
+    // Slider Logic
+    let f1 = 30, f2 = 70;
     const root = document.getElementById('slider-root');
+    const h1 = document.getElementById('h1'), h2 = document.getElementById('h2');
 
     function updateBars() {
         document.getElementById('bar-r').style.width = f1 + '%';
         document.getElementById('bar-c').style.left = f1 + '%';
         document.getElementById('bar-c').style.width = (f2 - f1) + '%';
-        h1.style.left = f1 + '%';
-        h2.style.left = f2 + '%';
-        document.getElementById('val-r').innerText = f1;
-        document.getElementById('val-c').innerText = f2 - f1;
-        document.getElementById('val-f').innerText = 100 - f2;
+        h1.style.left = `calc(${f1}% - 6px)`; h2.style.left = `calc(${f2}% - 6px)`;
+        document.getElementById('v-r').innerText = f1;
+        document.getElementById('v-c').innerText = f2 - f1;
+        document.getElementById('v-f').innerText = 100 - f2;
     }
 
     [h1, h2].forEach((h, i) => {
         h.onmousedown = (e) => {
             const move = (em) => {
                 let rect = root.getBoundingClientRect();
-                let x = ((em.clientX - rect.left) / rect.width) * 100;
-                x = Math.max(0, Math.min(100, Math.round(x)));
+                let x = Math.round(((em.clientX - rect.left) / rect.width) * 100);
+                x = Math.max(0, Math.min(100, x));
                 if (i === 0) f1 = Math.min(x, f2); else f2 = Math.max(x, f1);
                 updateBars();
             };
@@ -178,149 +170,111 @@
         };
     });
 
-    function initMatrix() {
+    function init() {
         const mx = document.getElementById('matrix');
         RANKS.forEach((r1, i) => {
             RANKS.forEach((r2, j) => {
                 const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
                 const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.hand = combo;
+                cell.className = 'cell'; cell.dataset.hand = combo;
                 cell.innerHTML = `<div class="cell-bg"></div><div class="cell-text">${combo}</div>`;
-                cell.onmousedown = (e) => { e.preventDefault(); paint(cell); };
+                cell.onmousedown = () => { if(!trainerRunning) { rangeData[combo] = {r:f1, c:f2-f1}; renderMatrix(); } };
                 mx.appendChild(cell);
             });
         });
-        renderMatrix();
-    }
-
-    function paint(cell) {
-        if(trainerRunning) return;
-        rangeData[cell.dataset.hand] = { r: f1, c: f2 - f1 };
-        renderMatrix();
+        renderMatrix(); syncUI(); updateBars();
     }
 
     function renderMatrix() {
         document.querySelectorAll('.cell').forEach(c => {
-            const d = rangeData[c.dataset.hand] || { r: 0, c: 0 };
-            const bg = c.querySelector('.cell-bg');
-            // Catppuccin Fold (Blue) - база
-            bg.style.backgroundColor = 'var(--blue)';
-            bg.innerHTML = `
+            const d = rangeData[c.dataset.hand] || {r:0, c:0};
+            c.querySelector('.cell-bg').innerHTML = `
                 <div style="height:${d.r}%; background:var(--red)"></div>
                 <div style="height:${d.c}%; background:var(--green)"></div>
-            `;
+                <div style="flex:1; background:var(--blue)"></div>`;
         });
     }
 
-    function syncPositions() {
-        const m = document.getElementById('mode').value;
-        const h = document.getElementById('hero');
-        const v = document.getElementById('villain');
-        const hIdx = POS.indexOf(h.value);
-
-        if(m === 'RFI' && h.value === 'BB') h.value = 'SB';
-        h.options[5].disabled = (m === 'RFI');
-
-        v.innerHTML = '';
-        if(m === 'vsOpen') POS.slice(0, hIdx).forEach(p => v.add(new Option(p,p)));
-        if(m === 'vs3bet') POS.slice(hIdx + 1).forEach(p => v.add(new Option(p,p)));
-        document.getElementById('v-container').style.display = (m==='RFI' ? 'none' : 'flex');
+    function switchView(v) {
+        if(trainerRunning && v !== 'tr') return showAlert("Stop trainer first!", "red");
+        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+        document.getElementById('tab-'+v).classList.add('active');
+        document.getElementById('view-ed').classList.toggle('hidden', v==='tr');
+        document.getElementById('view-tr').classList.toggle('hidden', v!=='tr');
     }
 
-    function switchView(v) {
-        if(trainerRunning && v !== 'tr') return alert("Сначала остановите тренировку!");
-        activeView = v;
-        document.querySelectorAll('.nav-link').forEach(l => l.style.opacity = '0.5');
-        document.getElementById(`tab-${v}`).style.opacity = '1';
-        
-        document.getElementById('view-matrix').classList.toggle('hidden', v === 'tr');
-        document.getElementById('view-trainer').classList.toggle('hidden', v !== 'tr');
+    function syncUI() {
+        const m = document.getElementById('mode').value, h = document.getElementById('hero'), v = document.getElementById('villain');
+        h.options[5].disabled = (m === 'RFI');
+        if (m === 'RFI' && h.value === 'BB') h.value = 'SB';
+        v.innerHTML = '';
+        const idx = POS.indexOf(h.value);
+        if(m === 'vsOpen') POS.slice(0, idx).forEach(p => v.add(new Option(p,p)));
+        if(m === 'vs3bet') POS.slice(idx + 1).forEach(p => v.add(new Option(p,p)));
+        v.parentElement.classList.toggle('hidden', m==='RFI');
     }
 
     function startTrainer() {
         trainerRunning = true;
         document.getElementById('start-btn').classList.add('hidden');
         document.getElementById('stop-btn').classList.remove('hidden');
-        document.querySelectorAll('#config-bar select').forEach(s => s.disabled = true);
-        switchView('tr');
-        deal();
+        switchView('tr'); deal();
     }
 
     function stopTrainer() {
         trainerRunning = false;
         document.getElementById('start-btn').classList.remove('hidden');
         document.getElementById('stop-btn').classList.add('hidden');
-        document.querySelectorAll('#config-bar select').forEach(s => s.disabled = false);
-        document.getElementById('feedback').innerText = "";
+        document.getElementById('alert').classList.add('hidden');
     }
 
     function deal() {
-        const m = document.getElementById('mode').value;
-        const hPos = document.getElementById('hero').value;
-        const vPos = document.getElementById('villain').value;
-
-        document.getElementById('next-btn').classList.add('hidden');
-        document.getElementById('feedback').innerText = "";
-        document.getElementById('t-call-btn').classList.toggle('disabled', m === 'RFI');
-
-        document.querySelectorAll('.pos-node').forEach(n => {
-            n.className = 'pos-node';
-            if(n.dataset.p === hPos) n.classList.add('pos-hero');
-            if(m !== 'RFI' && n.dataset.p === vPos) n.classList.add('pos-villain');
-        });
+        if(document.getElementById('rnd-hero').checked) {
+            document.getElementById('hero').value = POS[Math.floor(Math.random()*6)];
+            syncUI();
+        }
+        const m = document.getElementById('mode').value, h = document.getElementById('hero').value, v = document.getElementById('villain').value;
+        document.getElementById('nxt').classList.add('hidden');
+        document.getElementById('alert').classList.add('hidden');
+        document.getElementById('spot-txt').innerText = m === 'RFI' ? `${h} (RFI)` : `${h} vs ${v}`;
+        document.getElementById('t-call').classList.toggle('opacity-20', m==='RFI');
 
         const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
         const s1 = ["s","h","c","d"][Math.floor(Math.random()*4)], s2 = ["s","h","c","d"][Math.floor(Math.random()*4)];
-        if (r1===r2 && s1===s2) return deal();
+        if(r1===r2 && s1===s2) return deal();
         
         const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
-        currentHand = { r1, r2, s1, s2, combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
-        
+        currentHand = { combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
         const suits = {s:'♠', h:'♥', c:'♣', d:'♦'};
         document.getElementById('cards-spot').innerHTML = `
-            <div class="card ${s1}"><div class="text-xl">${r1}</div><div class="text-3xl mt-auto self-end">${suits[s1]}</div></div>
-            <div class="card ${s2}"><div class="text-xl">${r2}</div><div class="text-3xl mt-auto self-end">${suits[s2]}</div></div>
-        `;
+            <div class="card ${s1}"><div>${r1}</div><div class="text-3xl mt-auto self-end">${suits[s1]}</div></div>
+            <div class="card ${s2}"><div>${r2}</div><div class="text-3xl mt-auto self-end">${suits[s2]}</div></div>`;
     }
 
     function tAct(uA) {
-        if(!document.getElementById('next-btn').classList.contains('hidden')) return;
-        const d = rangeData[currentHand.combo] || { r: 0, c: 0 };
-        const fb = document.getElementById('feedback');
+        if(!document.getElementById('nxt').classList.contains('hidden')) return;
+        const d = rangeData[currentHand.combo] || {r:0, c:0};
+        let win = (uA==='raise' && d.r>0) || (uA==='call' && d.c>0) || (uA==='fold' && (d.r+d.c)<100);
         
-        let isOk = false;
-        if(uA === 'raise' && d.r > 0) isOk = true;
-        else if(uA === 'call' && d.c > 0) isOk = true;
-        else if(uA === 'fold' && (d.r + d.c) < 100) isOk = true;
-
-        if(isOk) {
-            fb.innerHTML = `<span class="text-green">ВЕРНО</span><br><span class="text-[10px] opacity-50">R:${d.r}% C:${d.c}% F:${100-d.r-d.c}%</span>`;
-            setTimeout(deal, 1000);
-        } else {
-            fb.innerHTML = `<span class="text-red">ОШИБКА</span><br><span class="text-[10px]">Верно: ${d.r > 0 ? 'Raise' : (d.c > 0 ? 'Call' : 'Fold')}</span>`;
-            document.getElementById('next-btn').classList.remove('hidden');
-        }
+        if(win) { stats.ok++; showAlert("CORRECT ACTION", "green"); setTimeout(deal, 800); }
+        else { stats.err++; showAlert(`WRONG: Best was ${d.r > d.c ? 'RAISE' : (d.c>0?'CALL':'FOLD')}`, "red"); document.getElementById('nxt').classList.remove('hidden'); }
+        updateStats();
     }
 
-    async function loadChart() {
-        const m = document.getElementById('mode').value, h = document.getElementById('hero').value;
-        try {
-            const r = await fetch(`charts/${m}_${h}.json`);
-            rangeData = await r.json();
-            renderMatrix();
-        } catch(e) { alert("Файл не найден"); }
+    function updateStats() {
+        document.getElementById('st-ok').innerText = stats.ok;
+        document.getElementById('st-err').innerText = stats.err;
+        const perc = (stats.ok / (stats.ok + stats.err)) * 100 || 0;
+        document.getElementById('st-bar').style.width = perc + '%';
     }
 
-    function saveChart() {
-        const blob = new Blob([JSON.stringify(rangeData, null, 2)], {type:'application/json'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`;
-        a.click();
+    function showAlert(txt, clr) {
+        const a = document.getElementById('alert');
+        a.className = `w-full max-w-md p-4 rounded-2xl flex items-center justify-center font-black text-xs bg-${clr}/20 text-${clr} border border-${clr}/30`;
+        a.innerText = txt; a.classList.remove('hidden');
     }
 
-    initMatrix(); updateBars(); syncPositions();
+    init();
 </script>
 </body>
 </html>
