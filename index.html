@@ -1,648 +1,254 @@
 <!doctype html>
 <html lang="ru">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Poker Range Master</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+<head>
+    <meta charset="utf-8" />
+    <title>Poker Range Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --base: #11111b; --surf: #1e1e2e; --text: #cdd6f4; --accent: #cba6f7; }
+        body { background: var(--base); color: var(--text); font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; background: #313244; padding: 5px; border-radius: 6px; }
+        .cell { width: 38px; height: 38px; background: #181825; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; position: relative; overflow: hidden; border-radius: 2px; }
+        .cell-fill { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 1; transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .cell-text { position: relative; z-index: 2; pointer-events: none; font-weight: 500; }
 
-        <style>
-            :root {
-                --base: #1e1e2e;
-                --surface0: #313244;
-                --surface1: #45475a;
-                --text: #cdd6f4;
-                --mauve: #cba6f7;
-                --red: #f38ba8;
-                --green: #a6e3a1;
-                --blue: #89b4fa;
-                --yellow: #f9e2af;
-                --peach: #fab387;
-            }
+        .card { width: 90px; height: 126px; border-radius: 12px; display: flex; flex-direction: column; padding: 12px; font-weight: 800; color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .s { background: linear-gradient(135deg, #45475a, #11111b); } /* Пики */
+        .h { background: linear-gradient(135deg, #f38ba8, #a61e4d); } /* Черви */
+        .c { background: linear-gradient(135deg, #a6e3a1, #2b8a3e); color: #000; } /* Трефы */
+        .d { background: linear-gradient(135deg, #89b4fa, #1c7ed6); } /* Бубны */
+        .card .val { font-size: 32px; line-height: 1; } .card .suit-icon { font-size: 44px; align-self: flex-end; margin-top: auto; }
 
-            body {
-                font-family: "Segoe UI", Inter, sans-serif;
-                background: var(--base);
-                color: var(--text);
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                user-select: none;
-            }
+        .btn { padding: 12px 24px; border-radius: 8px; font-weight: 700; transition: all 0.2s; text-transform: uppercase; }
+        .active-tab { color: var(--accent); border-bottom: 2px solid var(--accent); }
+        .hidden { display: none !important; }
+        input[type=range] { accent-color: var(--accent); }
+    </style>
+</head>
+<body class="p-6">
 
-            /* --- TABS --- */
-            .nav-tabs {
-                display: flex;
-                gap: 10px;
-                margin: 20px 0;
-                background: var(--surface0);
-                padding: 6px;
-                border-radius: 12px;
-            }
-            .tab-btn {
-                padding: 8px 24px;
-                border-radius: 8px;
-                font-weight: 600;
-                color: var(--text);
-                opacity: 0.7;
-                transition: all 0.2s;
-            }
-            .tab-btn:hover {
-                opacity: 1;
-                background: var(--surface1);
-            }
-            .tab-btn.active {
-                background: var(--mauve);
-                color: #1e1e2e;
-                opacity: 1;
-            }
-
-            /* --- EDITOR --- */
-            .toolbar {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-                justify-content: center;
-                margin-bottom: 10px;
-            }
-            .matrix {
-                display: grid;
-                grid-template-columns: repeat(13, 1fr);
-                gap: 2px;
-                background: var(--surface0);
-                padding: 5px;
-                border-radius: 8px;
-                width: 100%;
-                max-width: 500px;
-            }
-            .cell {
-                aspect-ratio: 1;
-                background: var(--surface1);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 3px;
-                cursor: pointer;
-                font-size: 10px;
-                color: var(--text);
-            }
-
-            .color-dot {
-                width: 30px;
-                height: 30px;
-                border-radius: 6px;
-                cursor: pointer;
-                border: 2px solid transparent;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                color: rgba(0, 0, 0, 0.5);
-            }
-            .color-dot.selected {
-                border-color: white;
-                transform: scale(1.1);
-                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-            }
-
-            /* --- CARDS (4-Color Deck style) --- */
-            .card {
-                width: 80px;
-                height: 112px;
-                border-radius: 10px;
-                position: relative;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-                display: flex;
-                flex-direction: column;
-                padding: 8px;
-                font-family: "Courier New", monospace;
-                font-weight: bold;
-                color: white; /* Всегда белый текст */
-                border: 2px solid rgba(255, 255, 255, 0.1);
-            }
-
-            /* Масти - заливка фона */
-            .card.spades {
-                background: linear-gradient(135deg, #2d3436, #000000);
-            } /* Пики - Черный/Серый */
-            .card.hearts {
-                background: linear-gradient(135deg, #e11d48, #9f1239);
-            } /* Черви - Красный */
-            .card.clubs {
-                background: linear-gradient(135deg, #16a34a, #14532d);
-            } /* Трефы - Зеленый */
-            .card.diamonds {
-                background: linear-gradient(135deg, #2563eb, #1e3a8a);
-            } /* Бубны - Синий */
-
-            .card .rank {
-                font-size: 28px;
-                line-height: 1;
-                text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
-            }
-            .card .suit {
-                font-size: 36px;
-                position: absolute;
-                bottom: 6px;
-                right: 8px;
-                line-height: 1;
-                opacity: 0.9;
-            }
-
-            /* --- UTILS --- */
-            .btn {
-                padding: 8px 16px;
-                border-radius: 8px;
-                background: var(--surface1);
-                transition: 0.2s;
-            }
-            .btn:hover {
-                filter: brightness(1.2);
-            }
-            .btn.primary {
-                background: var(--mauve);
-                color: #1e1e2e;
-                font-weight: bold;
-            }
-            .hidden {
-                display: none !important;
-            }
-        </style>
-    </head>
-
-    <body class="p-4">
-        <div class="flex items-center gap-3 mb-4">
-            <h1 class="text-2xl font-bold text-[#cba6f7]">
-                Poker Range Master
-            </h1>
+    <div class="w-full max-w-4xl flex flex-col items-center gap-6">
+        <div class="flex gap-10 text-sm font-bold tracking-widest uppercase">
+            <button onclick="setTab('ed')" id="tab-ed" class="pb-2 active-tab transition-all">Редактор</button>
+            <button onclick="setTab('tr')" id="tab-tr" class="pb-2 opacity-50 hover:opacity-100">Тренажер</button>
         </div>
 
-        <div
-            class="bg-[#313244] p-3 rounded-xl mb-4 flex gap-3 flex-wrap justify-center w-full max-w-xl"
-        >
-            <select
-                id="modeSel"
-                class="bg-[#45475a] text-white px-3 py-2 rounded border border-gray-600 outline-none"
-            >
-                <option value="RFI">RFI (Open)</option>
+        <div class="bg-[#1e1e2e] p-4 rounded-2xl flex gap-4 items-center w-full justify-center shadow-xl border border-white/5">
+            <select id="mode" onchange="checkBB()" class="bg-[#313244] p-2 rounded-lg outline-none">
+                <option value="RFI">RFI</option>
+                <option value="vsOpen">vs Open</option>
                 <option value="vs3bet">vs 3-Bet</option>
-                <option value="vs4bet">vs 4-Bet</option>
             </select>
-
-            <select
-                id="heroSel"
-                class="bg-[#45475a] text-white px-3 py-2 rounded border border-gray-600 outline-none"
-            >
-                <option>UTG</option>
-                <option>MP</option>
-                <option>CO</option>
-                <option>BTN</option>
-                <option>SB</option>
-                <option>BB</option>
+            <select id="hero" onchange="checkBB()" class="bg-[#313244] p-2 rounded-lg outline-none">
+                <option>UTG</option><option>MP</option><option>CO</option>
+                <option>BTN</option><option>SB</option><option id="hero-bb">BB</option>
             </select>
-
-            <button
-                id="loadChartBtn"
-                class="btn bg-blue-600 text-white flex items-center gap-2"
-            >
-                <span>🔄 Загрузить / Старт</span>
-            </button>
+            <button onclick="loadRemoteChart()" class="bg-indigo-500/20 text-indigo-300 px-4 py-2 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/40 transition-all">Загрузить JSON</button>
         </div>
+    </div>
 
-        <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('editor')">
-                Редактор
-            </button>
-            <button class="tab-btn" onclick="switchTab('trainer')">
-                Тренажер
-            </button>
-        </div>
-
-        <div id="view-editor" class="w-full flex flex-col items-center">
-            <div class="flex gap-2 mb-4">
-                <div
-                    class="color-dot"
-                    data-action="raise"
-                    style="background: var(--red)"
-                >
-                    R
-                </div>
-                <div
-                    class="color-dot"
-                    data-action="call"
-                    style="background: var(--green)"
-                >
-                    C
-                </div>
-                <div
-                    class="color-dot"
-                    data-action="3bet"
-                    style="background: var(--peach)"
-                >
-                    3B
-                </div>
-                <div
-                    class="color-dot"
-                    data-action="4bet"
-                    style="background: var(--yellow)"
-                >
-                    4B
-                </div>
-                <div
-                    class="color-dot"
-                    data-action="fold"
-                    style="background: var(--blue)"
-                >
-                    F
-                </div>
-                <div
-                    class="color-dot"
-                    data-action="erase"
-                    style="background: #444; color: white"
-                >
-                    ✕
-                </div>
-            </div>
-
-            <div id="matrix" class="matrix mb-4"></div>
-
+    <div id="view-ed" class="mt-8 flex flex-col items-center gap-6 animate-in fade-in duration-500">
+        <div class="flex gap-4 items-center bg-[#1e1e2e] p-4 rounded-xl shadow-inner">
             <div class="flex gap-2">
-                <button id="clearBtn" class="btn text-red-300">Очистить</button>
-                <button id="saveBtn" class="btn primary">Сохранить JSON</button>
-                <label class="btn cursor-pointer">
-                    Импорт файла
-                    <input id="fileIn" type="file" accept=".json" hidden />
-                </label>
+                <button class="dot w-10 h-10 rounded-lg bg-red-500 border-2 border-transparent" data-a="raise" title="Raise"></button>
+                <button class="dot w-10 h-10 rounded-lg bg-green-500 border-2 border-transparent" data-a="call" title="Call"></button>
+                <button class="dot w-10 h-10 rounded-lg bg-yellow-500 border-2 border-transparent" data-a="check" title="Check"></button>
+                <button class="dot w-10 h-10 rounded-lg bg-blue-500 border-2 border-transparent" data-a="fold" title="Fold"></button>
             </div>
-            <div id="statusMsg" class="h-6 mt-2 text-sm text-green-400"></div>
+            <div class="h-10 w-[1px] bg-white/10 mx-2"></div>
+            <div class="flex flex-col">
+                <span class="text-[10px] uppercase opacity-50 mb-1">Вес действия</span>
+                <div class="flex items-center gap-3">
+                    <input type="range" id="freq-slider" min="5" max="100" step="5" value="100" class="w-32">
+                    <span id="freq-val" class="text-sm font-mono w-10">100%</span>
+                </div>
+            </div>
         </div>
 
-        <div
-            id="view-trainer"
-            class="hidden w-full max-w-md flex flex-col items-center"
-        >
-            <div
-                class="flex justify-between w-full px-4 mb-6 text-sm text-gray-400"
-            >
-                <span id="current-chart-name">Chart: Custom</span>
-                <span id="score-display">0/0 (0%)</span>
-            </div>
+        <div id="matrix" class="matrix"></div>
+        
+        <div class="flex gap-4">
+            <button onclick="exportJSON()" class="text-[11px] uppercase tracking-tighter opacity-40 hover:opacity-100 transition-all">Экспорт файла</button>
+            <button onclick="if(confirm('Очистить?')){rangeData={}; renderMatrix()}" class="text-[11px] uppercase tracking-tighter opacity-40 hover:opacity-100 text-red-400">Очистить всё</button>
+        </div>
+    </div>
 
-            <div class="flex gap-6 mb-10" id="hand-container"></div>
+    <div id="view-tr" class="hidden mt-12 flex flex-col items-center w-full max-w-md">
+        <div id="score" class="mb-6 py-1 px-4 bg-white/5 rounded-full text-xs font-mono opacity-60">СЧЕТ: 0 / 0</div>
+        
+        <div class="flex gap-6 mb-12" id="cards-spot"></div>
 
-            <div
-                id="feedback"
-                class="h-8 text-xl font-bold mb-4 text-center"
-            ></div>
-
-            <div class="grid grid-cols-2 gap-3 w-full">
-                <button
-                    class="act-btn btn py-4 text-lg font-bold bg-blue-500/20 hover:bg-blue-500/40 text-blue-200 border border-blue-500/50"
-                    data-act="fold"
-                >
-                    FOLD
-                </button>
-                <button
-                    class="act-btn btn py-4 text-lg font-bold bg-green-500/20 hover:bg-green-500/40 text-green-200 border border-green-500/50"
-                    data-act="call"
-                >
-                    CALL
-                </button>
-                <button
-                    class="act-btn btn py-4 text-lg font-bold bg-red-500/20 hover:bg-red-500/40 text-red-200 border border-red-500/50"
-                    data-act="raise"
-                >
-                    RAISE
-                </button>
-                <button
-                    class="act-btn btn py-4 text-lg font-bold bg-orange-500/20 hover:bg-orange-500/40 text-orange-200 border border-orange-500/50"
-                    data-act="3bet"
-                >
-                    3-BET
-                </button>
-                <button
-                    class="act-btn btn py-4 text-lg font-bold col-span-2 bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-200 border border-yellow-500/50"
-                    data-act="4bet"
-                >
-                    4-BET
-                </button>
-            </div>
-
-            <button
-                id="nextHandBtn"
-                class="btn mt-6 w-full py-3 bg-neutral-700 hidden"
-            >
-                Дальше →
-            </button>
+        <div id="feedback" class="h-14 text-center">
+            <div id="fb-main" class="text-2xl font-black mb-1"></div>
+            <div id="fb-sub" class="text-sm opacity-60 font-medium"></div>
         </div>
 
-        <script>
-            /* ================= CONFIG ================= */
-            const ACTION_COLORS = {
-                raise: "var(--red)",
-                call: "var(--green)",
-                "3bet": "var(--peach)",
-                "4bet": "var(--yellow)",
-                fold: "var(--blue)",
-            };
+        <div class="grid grid-cols-2 gap-4 w-full mt-8">
+            <button onclick="handleAct('raise')" class="btn bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white">Raise</button>
+            <button onclick="handleAct('call')" class="btn bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-white">Call</button>
+            <button onclick="handleAct('check')" class="btn bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500 hover:text-black">Check</button>
+            <button onclick="handleAct('fold')" class="btn bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500 hover:text-white">Fold</button>
+        </div>
+        
+        <button id="next-btn" onclick="deal()" class="mt-10 py-3 px-12 bg-white text-black rounded-full font-bold shadow-lg hidden animate-bounce">СЛЕДУЮЩАЯ</button>
+    </div>
 
-            // 4-Color Deck Configuration
-            const SUITS = [
-                { s: "s", char: "♠", css: "spades" }, // Black/Gray
-                { s: "h", char: "♥", css: "hearts" }, // Red
-                { s: "d", char: "♦", css: "diamonds" }, // Blue
-                { s: "c", char: "♣", css: "clubs" }, // Green
-            ];
-            const RANKS = [
-                "A",
-                "K",
-                "Q",
-                "J",
-                "T",
-                "9",
-                "8",
-                "7",
-                "6",
-                "5",
-                "4",
-                "3",
-                "2",
-            ];
+<script>
+    const RANKS = "AKQJT98765432".split("");
+    const SUITS = [
+        {id:'s', char:'♠', class:'s'}, {id:'h', char:'♥', class:'h'},
+        {id:'c', char:'♣', class:'c'}, {id:'d', char:'♦', class:'d'}
+    ];
+    const COLORS = { raise:'#f38ba8', call:'#a6e3a1', check:'#f9e2af', fold:'#89b4fa' };
+    
+    let rangeData = {}; 
+    let selAction = 'raise';
+    let isDrawing = false;
+    let stats = {ok:0, total:0};
+    let currentHand = null;
 
-            let rangeData = {};
-            let stats = { correct: 0, total: 0 };
-            let currentHandObj = null;
+    // Сортировка: Слева всегда старшая карта
+    function getCombo(r1, r2, isSuited) {
+        let i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
+        let combo = i1 < i2 ? r1+r2 : r2+r1; 
+        if (r1 !== r2) combo += isSuited ? 's' : 'o';
+        return combo;
+    }
 
-            /* ================= EDITOR LOGIC ================= */
-            const matrixEl = document.getElementById("matrix");
-            let currentAction = "raise";
-            let isPainting = false;
+    function checkBB() {
+        const m = document.getElementById('mode').value;
+        const h = document.getElementById('hero');
+        const bb = document.getElementById('hero-bb');
+        bb.disabled = (m === 'RFI');
+        if (m === 'RFI' && h.value === 'BB') h.value = 'BTN';
+    }
 
-            // 1. Build Matrix
-            function initMatrix() {
-                matrixEl.innerHTML = "";
-                RANKS.forEach((r1, i) => {
-                    RANKS.forEach((r2, j) => {
-                        let hand =
-                            i === j
-                                ? r1 + r2
-                                : i < j
-                                  ? r1 + r2 + "s"
-                                  : r2 + r1 + "o";
-                        const c = document.createElement("div");
-                        c.className = "cell";
-                        c.dataset.hand = hand;
-                        c.textContent = hand;
-                        c.onmousedown = (e) => {
-                            isPainting = true;
-                            paint(c);
-                        };
-                        c.onmouseenter = (e) => {
-                            if (isPainting) paint(c);
-                        };
-                        matrixEl.appendChild(c);
-                    });
-                });
-            }
-            initMatrix();
-            window.onmouseup = () => (isPainting = false);
-
-            // 2. Painting
-            function paint(cell) {
-                const hand = cell.dataset.hand;
-                if (currentAction === "erase") {
-                    delete rangeData[hand];
-                    cell.style.background = "";
-                    cell.style.color = "";
-                    cell.removeAttribute("data-act");
-                } else {
-                    rangeData[hand] = currentAction;
-                    cell.dataset.act = currentAction;
-                    cell.style.background = ACTION_COLORS[currentAction];
-                    cell.style.color = "#000"; // Text black on matrix for readability
-                }
-            }
-
-            function repaintMatrix() {
-                document.querySelectorAll(".cell").forEach((c) => {
-                    const act = rangeData[c.dataset.hand];
-                    if (act) {
-                        c.dataset.act = act;
-                        c.style.background = ACTION_COLORS[act];
-                        c.style.color = "#000";
-                    } else {
-                        c.removeAttribute("data-act");
-                        c.style.background = "";
-                        c.style.color = "";
-                    }
-                });
-            }
-
-            // 3. Toolbar
-            document.querySelectorAll(".color-dot").forEach((d) => {
-                d.onclick = () => {
-                    document
-                        .querySelectorAll(".color-dot")
-                        .forEach((x) => x.classList.remove("selected"));
-                    d.classList.add("selected");
-                    currentAction = d.dataset.action;
-                };
+    function init() {
+        const mx = document.getElementById('matrix');
+        RANKS.forEach((r1, i) => {
+            RANKS.forEach((r2, j) => {
+                const isSuited = i < j;
+                const combo = getCombo(r1, r2, isSuited);
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.hand = combo;
+                cell.innerHTML = `<div class="cell-fill"></div><div class="cell-text">${combo}</div>`;
+                cell.onmousedown = (e) => { e.preventDefault(); isDrawing=true; applyColor(cell); };
+                cell.onmouseover = () => { if(isDrawing) applyColor(cell); };
+                mx.appendChild(cell);
             });
-            document.querySelector('[data-action="raise"]').click();
+        });
+        window.onmouseup = () => isDrawing = false;
 
-            // 4. Load/Save/Clear
-            document.getElementById("clearBtn").onclick = () => {
-                rangeData = {};
-                repaintMatrix();
+        document.querySelectorAll('.dot').forEach(d => {
+            d.onclick = () => {
+                document.querySelectorAll('.dot').forEach(x => x.style.borderColor='transparent');
+                d.style.borderColor = 'white';
+                selAction = d.dataset.a;
             };
+        });
+        document.querySelector('[data-a="raise"]').click();
+        document.getElementById('freq-slider').oninput = (e) => { document.getElementById('freq-val').innerText = e.target.value + '%'; }
+    }
 
-            document.getElementById("saveBtn").onclick = () => {
-                const name = `${document.getElementById("modeSel").value}_${document.getElementById("heroSel").value}.json`;
-                const blob = new Blob([JSON.stringify(rangeData, null, 2)], {
-                    type: "application/json",
-                });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = name;
-                a.click();
-            };
+    function applyColor(cell) {
+        const hand = cell.dataset.hand;
+        const freq = parseInt(document.getElementById('freq-slider').value);
+        if (selAction === 'fold' && freq === 100) delete rangeData[hand];
+        else rangeData[hand] = { a: selAction, f: freq };
+        renderMatrix();
+    }
 
-            const fileIn = document.getElementById("fileIn");
-            fileIn.onchange = (e) => {
-                const f = e.target.files[0];
-                if (!f) return;
-                const r = new FileReader();
-                r.onload = (ev) => {
-                    rangeData = JSON.parse(ev.target.result);
-                    repaintMatrix();
-                    showStatus("Файл загружен вручную!");
-                };
-                r.readAsText(f);
-            };
+    function renderMatrix() {
+        document.querySelectorAll('.cell').forEach(cell => {
+            const data = rangeData[cell.dataset.hand];
+            const fill = cell.querySelector('.cell-fill');
+            if (data) {
+                fill.style.height = data.f + '%';
+                fill.style.background = COLORS[data.a];
+            } else { fill.style.height = '0%'; }
+        });
+    }
 
-            /* ================= DATA LOADING LOGIC ================= */
+    function setTab(t) {
+        document.getElementById('view-ed').classList.toggle('hidden', t!=='ed');
+        document.getElementById('view-tr').classList.toggle('hidden', t!=='tr');
+        document.getElementById('tab-ed').classList.toggle('active-tab', t==='ed');
+        document.getElementById('tab-tr').classList.toggle('active-tab', t==='tr');
+        document.getElementById('tab-ed').classList.toggle('opacity-50', t!=='ed');
+        document.getElementById('tab-tr').classList.toggle('opacity-50', t!=='tr');
+        if(t === 'tr') deal();
+    }
 
-            async function tryLoadFromChartsFolder() {
-                const mode = document.getElementById("modeSel").value;
-                const hero = document.getElementById("heroSel").value;
-                // Имя файла: charts/RFI_UTG.json
-                const path = `charts/${mode}_${hero}.json`;
+    function deal() {
+        document.getElementById('fb-main').innerText = "";
+        document.getElementById('fb-sub').innerText = "";
+        document.getElementById('next-btn').classList.add('hidden');
+        
+        let r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
+        let s1 = SUITS[Math.floor(Math.random()*4)], s2 = SUITS[Math.floor(Math.random()*4)];
+        if (r1===r2 && s1.id===s2.id) return deal();
 
-                showStatus("Попытка загрузки " + path + "...");
+        // Всегда ставим старшую карту ПЕРВОЙ для отображения
+        if (RANKS.indexOf(r1) > RANKS.indexOf(r2)) {
+            [r1, r2] = [r2, r1]; [s1, s2] = [s2, s1];
+        }
+        
+        currentHand = { r1, r2, s1, s2, combo: getCombo(r1, r2, s1.id===s2.id) };
+        
+        document.getElementById('cards-spot').innerHTML = `
+            <div class="card ${s1.class}"><div class="val">${r1}</div><div class="suit-icon">${s1.char}</div></div>
+            <div class="card ${s2.class}"><div class="val">${r2}</div><div class="suit-icon">${s2.char}</div></div>
+        `;
+    }
 
-                try {
-                    const res = await fetch(path);
-                    if (!res.ok) throw new Error("404");
-                    const data = await res.json();
+    function handleAct(userA) {
+        if (!document.getElementById('next-btn').classList.contains('hidden')) return;
+        
+        const data = rangeData[currentHand.combo] || { a: 'fold', f: 100 };
+        const fbMain = document.getElementById('fb-main');
+        const fbSub = document.getElementById('fb-sub');
+        
+        // Логика пограничных рук: не считаем ошибкой, если частота < 100% и выбран Fold или Action
+        const isMixed = data.f < 100;
+        const isCorrect = (userA === data.a) || (isMixed && userA === 'fold');
 
-                    rangeData = data;
-                    repaintMatrix(); // Update editor view
+        stats.total++;
+        if (isCorrect) {
+            stats.ok++;
+            fbMain.innerText = "ВЕРНО"; fbMain.className = "text-2xl font-black mb-1 text-green-400";
+            fbSub.innerText = `${currentHand.combo}: ${data.a.toUpperCase()} (${data.f}%) / FOLD (${100-data.f}%)`;
+            setTimeout(deal, 1200);
+        } else {
+            fbMain.innerText = "ОШИБКА"; fbMain.className = "text-2xl font-black mb-1 text-red-400";
+            fbSub.innerText = `Должно быть: ${data.a.toUpperCase()} (${data.f}%)`;
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+        document.getElementById('score').innerText = `СЧЕТ: ${stats.ok} / ${stats.total}`;
+    }
 
-                    document.getElementById("current-chart-name").textContent =
-                        `Chart: ${mode} ${hero}`;
-                    showStatus("Успешно загружено из папки!");
+    async function loadRemoteChart() {
+        const m = document.getElementById('mode').value;
+        const h = document.getElementById('hero').value;
+        try {
+            const r = await fetch(`charts/${m}_${h}.json`);
+            if (!r.ok) throw "404";
+            rangeData = await r.json();
+            renderMatrix();
+            alert("Данные обновлены!");
+        } catch(e) { alert("Файл не найден в /charts/"); }
+    }
 
-                    // Reset stats
-                    stats = { correct: 0, total: 0 };
-                    updateScore();
-                    nextHand(); // Deal new hand
-                } catch (e) {
-                    console.warn(e);
-                    showStatus(
-                        "Файл не найден в папке /charts. Используем текущий редактор.",
-                    );
-                    document.getElementById("current-chart-name").textContent =
-                        `Chart: Editor Custom`;
-                    nextHand();
-                }
-            }
+    function exportJSON() {
+        const blob = new Blob([JSON.stringify(rangeData, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`;
+        a.click();
+    }
 
-            document.getElementById("loadChartBtn").onclick = () => {
-                tryLoadFromChartsFolder();
-            };
-
-            function showStatus(msg) {
-                const el = document.getElementById("statusMsg");
-                el.textContent = msg;
-                setTimeout(() => (el.textContent = ""), 3000);
-            }
-
-            /* ================= TRAINER LOGIC ================= */
-
-            function switchTab(t) {
-                document
-                    .querySelectorAll(".tab-btn")
-                    .forEach((b) => b.classList.remove("active"));
-                document
-                    .querySelector(`[onclick="switchTab('${t}')"]`)
-                    .classList.add("active");
-                if (t === "editor") {
-                    document
-                        .getElementById("view-editor")
-                        .classList.remove("hidden");
-                    document
-                        .getElementById("view-trainer")
-                        .classList.add("hidden");
-                } else {
-                    document
-                        .getElementById("view-editor")
-                        .classList.add("hidden");
-                    document
-                        .getElementById("view-trainer")
-                        .classList.remove("hidden");
-                    if (Object.keys(rangeData).length === 0)
-                        tryLoadFromChartsFolder();
-                }
-            }
-
-            function getRandom(arr) {
-                return arr[Math.floor(Math.random() * arr.length)];
-            }
-
-            function genHand() {
-                let r1 = getRandom(RANKS),
-                    r2 = getRandom(RANKS);
-                let s1 = getRandom(SUITS),
-                    s2 = getRandom(SUITS);
-
-                // Avoid identical cards
-                if (r1 === r2 && s1.s === s2.s)
-                    s2 = SUITS[(SUITS.indexOf(s1) + 1) % 4];
-
-                // Determine combo key (AKs, AA, 72o)
-                let idx1 = RANKS.indexOf(r1),
-                    idx2 = RANKS.indexOf(r2);
-                let combo;
-                if (idx1 < idx2) combo = r1 + r2 + (s1.s === s2.s ? "s" : "o");
-                else if (idx1 > idx2)
-                    combo = r2 + r1 + (s1.s === s2.s ? "s" : "o");
-                else combo = r1 + r2;
-
-                return { r1, r2, s1, s2, combo };
-            }
-
-            function renderCard(r, s) {
-                return `
-                <div class="card ${s.css}">
-                    <div class="rank">${r}</div>
-                    <div class="suit">${s.char}</div>
-                </div>`;
-            }
-
-            function nextHand() {
-                document.getElementById("feedback").textContent = "";
-                document.getElementById("nextHandBtn").classList.add("hidden");
-                toggleButtons(true);
-
-                currentHandObj = genHand();
-                document.getElementById("hand-container").innerHTML =
-                    renderCard(currentHandObj.r1, currentHandObj.s1) +
-                    renderCard(currentHandObj.r2, currentHandObj.s2);
-            }
-
-            function check(userAct) {
-                const correct = rangeData[currentHandObj.combo] || "fold";
-
-                stats.total++;
-                const fb = document.getElementById("feedback");
-
-                if (userAct === correct) {
-                    stats.correct++;
-                    fb.innerHTML = `<span class="text-green-400">✓ Correct</span>`;
-                    setTimeout(nextHand, 400); // Quick proceed
-                } else {
-                    fb.innerHTML = `<span class="text-red-400">✗ Wrong. Correct: ${correct.toUpperCase()}</span>`;
-                    toggleButtons(false);
-                    document
-                        .getElementById("nextHandBtn")
-                        .classList.remove("hidden");
-                }
-                updateScore();
-            }
-
-            function updateScore() {
-                const p =
-                    stats.total === 0
-                        ? 0
-                        : Math.round((stats.correct / stats.total) * 100);
-                document.getElementById("score-display").textContent =
-                    `${stats.correct}/${stats.total} (${p}%)`;
-            }
-
-            function toggleButtons(on) {
-                const pointer = on ? "auto" : "none";
-                const opacity = on ? "1" : "0.5";
-                document.querySelectorAll(".act-btn").forEach((b) => {
-                    b.style.pointerEvents = pointer;
-                    b.style.opacity = opacity;
-                });
-            }
-
-            document.querySelectorAll(".act-btn").forEach((b) => {
-                b.onclick = () => check(b.dataset.act);
-            });
-            document.getElementById("nextHandBtn").onclick = nextHand;
-        </script>
-    </body>
+    init();
+</script>
+</body>
 </html>
