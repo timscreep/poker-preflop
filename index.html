@@ -1,243 +1,278 @@
 <!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="utf-8" />
-    <title>GTO Trainer Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --base: #0b0e14; --surf: #161b22; --text: #c9d1d9; --accent: #58a6ff; }
-        body { background: var(--base); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; }
-        
-        /* Стол */
-        .poker-table { width: 300px; height: 160px; border: 4px solid #30363d; border-radius: 100px; position: relative; margin: 20px 0; background: radial-gradient(#1f242c, #0b0e14); }
-        .pos-node { position: absolute; width: 36px; height: 36px; border-radius: 50%; background: #21262d; border: 2px solid #30363d; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; transition: 0.3s; }
-        .pos-hero { border-color: #d29922; color: #d29922; box-shadow: 0 0 10px rgba(210,153,34,0.3); }
-        .pos-villain { border-color: #f85149; color: #f85149; }
+    <meta charset="utf-8" />
+    <title>GTO Trainer Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --base: #0b0e14; --surf: #161b22; --text: #c9d1d9; --accent: #58a6ff; 
+                --r-clr: #f38ba8; --c-clr: #a6e3a1; --f-clr: #30363d; }
+        body { background: var(--base); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+        
+        /* Слайдер с двумя ручками */
+        .slider-wrap { width: 100%; height: 32px; background: var(--f-clr); position: relative; border-radius: 8px; border: 1px solid #30363d; cursor: pointer; }
+        .bar-r { position: absolute; height: 100%; background: var(--r-clr); border-radius: 8px 0 0 8px; }
+        .bar-c { position: absolute; height: 100%; background: var(--c-clr); }
+        .handle { position: absolute; width: 12px; height: 38px; background: white; top: -3px; border-radius: 4px; cursor: col-resize; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); }
 
-        /* Матрица */
-        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; background: #30363d; border: 1px solid #30363d; }
-        .cell { width: 36px; height: 36px; background: #89b4fa; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; position: relative; }
-        .cell-fill { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 1; }
-        .cell-text { position: relative; z-index: 2; color: #000; font-weight: 600; }
+        /* Матрица */
+        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; background: #30363d; border: 1px solid #30363d; }
+        .cell { width: 35px; height: 35px; background: var(--f-clr); display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; position: relative; overflow: hidden; }
+        .cell-fill { position: absolute; inset: 0; display: flex; flex-direction: column; }
+        .cell-text { position: relative; z-index: 5; color: #fff; font-weight: 600; text-shadow: 1px 1px 1px #000; }
 
-        /* Карты */
-        .card { width: 80px; height: 110px; border-radius: 8px; display: flex; flex-direction: column; padding: 10px; font-weight: bold; color: white; }
-        .s { background: #21262d; } .h { background: #da3633; } .c { background: #238636; } .d { background: #1f6feb; }
-        .card .val { font-size: 24px; } .card .suit { font-size: 32px; align-self: flex-end; margin-top: auto; }
+        .poker-table { width: 280px; height: 140px; border: 4px solid #30363d; border-radius: 100px; position: relative; background: radial-gradient(#1f242c, #0b0e14); }
+        .pos-node { position: absolute; width: 34px; height: 34px; border-radius: 50%; background: #21262d; border: 2px solid #30363d; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
+        .pos-hero { border-color: #d29922; color: #d29922; box-shadow: 0 0 15px rgba(210,153,34,0.2); }
+        .pos-villain { border-color: #f85149; color: #f85149; }
 
-        .active-tab { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
-        .hidden { display: none !important; }
-    </style>
+        .sidebar-btn { @apply flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all text-sm font-medium text-gray-400 hover:bg-white/5; }
+        .sidebar-btn.active { @apply bg-blue-600/10 text-blue-400 border border-blue-600/20; }
+        
+        .card { width: 70px; height: 100px; border-radius: 8px; @apply flex flex-col p-2 font-bold text-white shadow-xl; }
+        .s { background: #21262d; } .h { background: #da3633; } .c { background: #238636; } .d { background: #1f6feb; }
+    </style>
 </head>
-<body class="p-4">
+<body class="flex">
 
-    <div class="flex gap-8 mb-6 font-bold uppercase text-xs tracking-widest">
-        <button onclick="setTab('ed')" id="tab-ed" class="active-tab pb-1">Редактор</button>
-        <button onclick="setTab('tr')" id="tab-tr" class="opacity-50 pb-1">Тренажер</button>
-    </div>
+    <aside class="w-64 border-r border-[#30363d] p-6 flex flex-col bg-[#0d1117]">
+        <div class="mb-10 flex items-center gap-2 px-2">
+            <div class="w-6 h-6 bg-blue-500 rounded-md"></div>
+            <h1 class="font-bold tracking-tight text-lg">GTO<span class="text-blue-500">PRO</span></h1>
+        </div>
+        
+        <nav class="flex-1 space-y-1">
+            <button onclick="setTab('ed')" id="tab-ed" class="sidebar-btn active">Редактор</button>
+            <button onclick="setTab('tr')" id="tab-tr" class="sidebar-btn">Тренажер</button>
+            <button onclick="setTab('lib')" id="tab-lib" class="sidebar-btn opacity-40 cursor-not-allowed">Библиотека</button>
+        </nav>
 
-    <div class="bg-[#161b22] p-3 rounded-lg flex gap-4 mb-6 border border-[#30363d]">
-        <select id="mode" onchange="syncUI()" class="bg-[#0d1117] p-1 rounded text-sm outline-none">
-            <option value="RFI">RFI</option>
-            <option value="vsOpen">vs Open</option>
-            <option value="vs3bet">vs 3-Bet</option>
-        </select>
-        <select id="hero" onchange="syncUI()" class="bg-[#0d1117] p-1 rounded text-sm outline-none">
-            <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
-        </select>
-        <button onclick="loadRemote()" class="text-xs bg-blue-600/20 text-blue-400 px-3 py-1 rounded border border-blue-600/30">Загрузить JSON</button>
-    </div>
+        <div class="mt-auto bg-[#161b22] p-4 rounded-xl border border-[#30363d]">
+            <p class="text-[10px] uppercase font-bold text-gray-500 mb-3">Статистика сессии</p>
+            <div class="flex justify-between items-end">
+                <div>
+                    <p class="text-2xl font-mono font-bold text-green-400" id="stat-ok">0</p>
+                    <p class="text-[10px] text-gray-400 uppercase">Верно</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-2xl font-mono font-bold text-red-400" id="stat-err">0</p>
+                    <p class="text-[10px] text-gray-400 uppercase">Ошибки</p>
+                </div>
+            </div>
+            <div class="w-full bg-gray-800 h-1 rounded-full mt-3 overflow-hidden">
+                <div id="stat-bar" class="bg-blue-500 h-full w-0 transition-all duration-500"></div>
+            </div>
+        </div>
+    </aside>
 
-    <div id="view-ed" class="flex flex-col items-center">
-        <div class="flex gap-4 items-center mb-4 bg-[#161b22] p-3 rounded-lg w-full justify-center">
-            <button class="dot w-8 h-8 rounded bg-[#f38ba8]" data-a="raise"></button>
-            <button class="dot w-8 h-8 rounded bg-[#a6e3a1]" data-a="call"></button>
-            <button class="dot w-8 h-8 rounded bg-[#f9e2af]" data-a="check"></button>
-            <input type="range" id="freq" min="0" max="100" step="10" value="100" class="w-24">
-            <span id="freq-txt" class="text-xs font-mono w-8">100%</span>
-        </div>
-        <div id="matrix" class="matrix"></div>
-        <button onclick="exportJSON()" class="mt-4 text-[10px] opacity-30 hover:opacity-100 uppercase">Экспорт в файл</button>
-    </div>
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        
+        <header class="h-16 border-b border-[#30363d] px-8 flex items-center justify-between bg-[#0b0e14]">
+            <div class="flex gap-4">
+                <select id="mode" onchange="syncUI()" class="bg-[#161b22] border border-[#30363d] rounded px-3 py-1 text-sm outline-none">
+                    <option value="RFI">RFI</option><option value="vsOpen">vs Open</option><option value="vs3bet">vs 3-Bet</option>
+                </select>
+                <select id="hero" onchange="syncUI()" class="bg-[#161b22] border border-[#30363d] rounded px-3 py-1 text-sm outline-none">
+                    <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
+                </select>
+            </div>
+            <button onclick="exportJSON()" class="text-[10px] font-bold uppercase py-2 px-4 border border-[#30363d] rounded hover:bg-white/5 transition">Экспорт JSON</button>
+        </header>
 
-    <div id="view-tr" class="hidden flex flex-col items-center w-full max-w-sm">
-        <div class="poker-table" id="table-visual">
-            <div class="pos-node" style="top: -18px; left: 132px;" data-p="UTG">UTG</div>
-            <div class="pos-node" style="top: 20px; right: -18px;" data-p="MP">MP</div>
-            <div class="pos-node" style="bottom: 20px; right: -18px;" data-p="CO">CO</div>
-            <div class="pos-node" style="bottom: -18px; left: 132px;" data-p="BTN">BTN</div>
-            <div class="pos-node" style="bottom: 20px; left: -18px;" data-p="SB">SB</div>
-            <div class="pos-node" style="top: 20px; left: -18px;" data-p="BB">BB</div>
-        </div>
+        <div class="flex-1 p-8 flex flex-col items-center justify-start overflow-y-auto">
+            
+            <div id="view-ed" class="w-full max-w-2xl flex flex-col items-center">
+                <div class="w-full bg-[#161b22] p-6 rounded-2xl border border-[#30363d] mb-6">
+                    <div class="flex justify-between text-[11px] font-bold uppercase mb-4 px-1">
+                        <span class="text-red-400">Raise: <span id="v-r">30</span>%</span>
+                        <span class="text-green-400">Call: <span id="v-c">40</span>%</span>
+                        <span class="text-gray-500">Fold: <span id="v-f">30</span>%</span>
+                    </div>
+                    <div class="slider-wrap" id="s-root">
+                        <div class="bar-r" id="b-r"></div>
+                        <div class="bar-c" id="b-c"></div>
+                        <div class="handle" id="h1"></div>
+                        <div class="handle" id="h2"></div>
+                    </div>
+                </div>
+                <div id="matrix" class="matrix shadow-2xl"></div>
+            </div>
 
-        <div id="cards-spot" class="flex gap-4 mb-8 h-[110px]"></div>
-        
-        <div id="feedback" class="h-12 text-center mb-4 text-sm font-bold"></div>
+            <div id="view-tr" class="hidden w-full max-w-sm flex flex-col items-center">
+                <div id="alert-box" class="w-full mb-6 p-4 rounded-xl border border-transparent hidden flex items-center justify-center font-bold text-sm"></div>
 
-        <div class="grid grid-cols-2 gap-3 w-full">
-            <button onclick="handleAct('raise')" class="p-3 rounded bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white transition">RAISE</button>
-            <button onclick="handleAct('call')" class="p-3 rounded bg-green-500/10 border border-green-500/30 hover:bg-green-500 hover:text-white transition">CALL</button>
-            <button onclick="handleAct('check')" class="p-3 rounded bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black transition">CHECK</button>
-            <button onclick="handleAct('fold')" class="p-3 rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500 hover:text-white transition">FOLD</button>
-        </div>
-        <button id="next-btn" onclick="deal()" class="mt-6 py-2 px-8 bg-white text-black rounded font-bold hidden">NEXT</button>
-    </div>
+                <div class="poker-table mb-8">
+                    <div class="pos-node" style="top: -17px; left: 123px;" data-p="UTG">UTG</div>
+                    <div class="pos-node" style="top: 20px; right: -17px;" data-p="MP">MP</div>
+                    <div class="pos-node" style="bottom: 20px; right: -17px;" data-p="CO">CO</div>
+                    <div class="pos-node" style="bottom: -17px; left: 123px;" data-p="BTN">BTN</div>
+                    <div class="pos-node" style="bottom: 20px; left: -17px;" data-p="SB">SB</div>
+                    <div class="pos-node" style="top: 20px; left: -17px;" data-p="BB">BB</div>
+                </div>
+
+                <div id="cards-spot" class="flex gap-4 mb-8 h-[100px]"></div>
+                
+                <div class="grid grid-cols-2 gap-3 w-full">
+                    <button onclick="handleAct('raise')" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 font-bold hover:bg-red-500 hover:text-white transition">RAISE</button>
+                    <button id="tr-call" onclick="handleAct('call')" class="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 font-bold hover:bg-green-500 hover:text-white transition">CALL</button>
+                    <button onclick="handleAct('fold')" class="p-4 rounded-xl bg-gray-500/10 border border-gray-500/20 text-gray-400 font-bold hover:bg-gray-500 hover:text-white transition col-span-2">FOLD</button>
+                </div>
+                <button id="next-btn" onclick="deal()" class="mt-6 w-full py-4 bg-white text-black rounded-xl font-bold hidden shadow-xl">СЛЕДУЮЩАЯ РУКА</button>
+            </div>
+        </div>
+    </main>
 
 <script>
-    const RANKS = "AKQJT98765432".split("");
-    const POSITIONS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
-    const COLORS = { raise:'#f38ba8', call:'#a6e3a1', check:'#f9e2af', fold:'#89b4fa' };
-    
-    let rangeData = {}; 
-    let selAction = 'raise';
-    let isDrawing = false;
-    let currentHand = null;
+    const RANKS = "AKQJT98765432".split("");
+    const POSITIONS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
+    let rangeData = {}, stats = { ok: 0, err: 0 };
+    let fR = 30, fC = 40, isDrawing = false, currentHand = null;
 
-    function syncUI() {
-        const m = document.getElementById('mode').value;
-        const h = document.getElementById('hero');
-        // Логика ограничений
-        if (m === 'RFI' && h.value === 'BB') h.value = 'SB';
-        const bbOpt = h.querySelector('option[value="BB"]');
-        if (m === 'RFI') h.options[5].disabled = true; else h.options[5].disabled = false;
-    }
+    // --- ЛОГИКА СЛАЙДЕРА ---
+    const h1 = document.getElementById('h1'), h2 = document.getElementById('h2'), sRoot = document.getElementById('s-root');
+    const br = document.getElementById('b-r'), bc = document.getElementById('b-c');
 
-    function init() {
-        const mx = document.getElementById('matrix');
-        RANKS.forEach((r1, i) => {
-            RANKS.forEach((r2, j) => {
-                const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.hand = combo;
-                cell.innerHTML = `<div class="cell-fill" style="height:100%; background:${COLORS.fold}"></div><div class="cell-text">${combo}</div>`;
-                cell.onmousedown = (e) => { e.preventDefault(); isDrawing=true; paint(cell); };
-                cell.onmouseover = () => { if(isDrawing) paint(cell); };
-                mx.appendChild(cell);
-            });
-        });
-        window.onmouseup = () => isDrawing = false;
-        document.querySelectorAll('.dot').forEach(d => d.onclick = () => {
-            selAction = d.dataset.a;
-            document.querySelectorAll('.dot').forEach(x=>x.style.boxShadow='none');
-            d.style.boxShadow = '0 0 0 2px white';
-        });
-        document.querySelector('[data-a="raise"]').click();
-        document.getElementById('freq').oninput = (e) => document.getElementById('freq-txt').innerText = e.target.value + '%';
-    }
+    function updateSliderUI() {
+        br.style.width = fR + '%';
+        bc.style.left = fR + '%';
+        bc.style.width = fC + '%';
+        h1.style.left = fR + '%';
+        h2.style.left = (fR + fC) + '%';
+        document.getElementById('v-r').innerText = fR;
+        document.getElementById('v-c').innerText = fC;
+        document.getElementById('v-f').innerText = 100 - fR - fC;
+    }
 
-    function paint(cell) {
-        const h = cell.dataset.hand;
-        const f = parseInt(document.getElementById('freq').value);
-        if (f === 0) delete rangeData[h];
-        else rangeData[h] = { a: selAction, f: f };
-        renderMatrix();
-    }
+    function handleSlider(e, index) {
+        const rect = sRoot.getBoundingClientRect();
+        let val = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+        val = Math.max(0, Math.min(100, val));
 
-    function renderMatrix() {
-        document.querySelectorAll('.cell').forEach(c => {
-            const data = rangeData[c.dataset.hand];
-            const fill = c.querySelector('.cell-fill');
-            if (data) {
-                fill.style.height = '100%';
-                fill.style.background = `linear-gradient(to top, ${COLORS[data.a]} ${data.f}%, ${COLORS.fold} ${data.f}%)`;
-            } else {
-                fill.style.background = COLORS.fold;
-            }
-        });
-    }
+        if (index === 0) { // Левый ползунок (Raise)
+            let total = fR + fC;
+            fR = Math.min(val, total);
+            fC = total - fR;
+        } else { // Правый ползунок (Raise + Call)
+            fC = Math.max(0, val - fR);
+        }
+        updateSliderUI();
+    }
 
-    function setTab(t) {
-        document.getElementById('view-ed').classList.toggle('hidden', t!=='ed');
-        document.getElementById('view-tr').classList.toggle('hidden', t!=='tr');
-        document.getElementById('tab-ed').className = t==='ed' ? 'active-tab pb-1' : 'opacity-50 pb-1';
-        document.getElementById('tab-tr').className = t==='tr' ? 'active-tab pb-1' : 'opacity-50 pb-1';
-        if(t==='tr') deal();
-    }
+    [h1, h2].forEach((h, i) => {
+        h.onmousedown = (e) => {
+            e.stopPropagation();
+            const move = (em) => handleSlider(em, i);
+            const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', up);
+        };
+    });
 
-    function deal() {
-        const mode = document.getElementById('mode').value;
-        const heroPos = document.getElementById('hero').value;
-        document.getElementById('feedback').innerText = "";
-        document.getElementById('next-btn').classList.add('hidden');
+    // --- МАТРИЦА ---
+    function init() {
+        const mx = document.getElementById('matrix');
+        RANKS.forEach((r1, i) => {
+            RANKS.forEach((r2, j) => {
+                const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.hand = combo;
+                cell.innerHTML = `<div class="cell-fill"></div><div class="cell-text">${combo}</div>`;
+                cell.onmousedown = (e) => { e.preventDefault(); isDrawing = true; paint(cell); };
+                cell.onmouseover = () => { if(isDrawing) paint(cell); };
+                mx.appendChild(cell);
+            });
+        });
+        window.onmouseup = () => isDrawing = false;
+        updateSliderUI(); renderMatrix();
+    }
 
-        // Визуализация стола
-        document.querySelectorAll('.pos-node').forEach(n => {
-            n.className = 'pos-node';
-            if (n.dataset.p === heroPos) n.classList.add('pos-hero');
-        });
+    function paint(cell) {
+        rangeData[cell.dataset.hand] = { r: fR, c: fC };
+        renderMatrix();
+    }
 
-        let villainPos = null;
-        if (mode === 'vsOpen' || mode === 'vs3bet') {
-            const hIdx = POSITIONS.indexOf(heroPos);
-            // Виллаин - это кто-то до Hero (vsOpen) или после (vs3bet)
-            if (mode === 'vsOpen') {
-                if (hIdx === 0) { alert("UTG не может играть vs Open. Переключаю на MP"); document.getElementById('hero').value="MP"; return deal(); }
-                villainPos = POSITIONS[Math.floor(Math.random() * hIdx)];
-            } else {
-                villainPos = POSITIONS[hIdx + 1 + Math.floor(Math.random() * (5 - hIdx))];
-                if (!villainPos) villainPos = 'BTN';
-            }
-            document.querySelector(`[data-p="${villainPos}"]`).classList.add('pos-villain');
-        }
+    function renderMatrix() {
+        document.querySelectorAll('.cell').forEach(c => {
+            const d = rangeData[c.dataset.hand] || { r: 0, c: 0 };
+            const fill = c.querySelector('.cell-fill');
+            fill.style.background = `linear-gradient(to top, var(--f-clr) ${100-(d.r+d.c)}%, var(--c-clr) ${100-(d.r+d.c)}% ${100-d.r}%, var(--r-clr) ${100-d.r}% 100%)`;
+        });
+    }
 
-        // Генерация карт
-        const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
-        const s1 = ["s","h","c","d"][Math.floor(Math.random()*4)], s2 = ["s","h","c","d"][Math.floor(Math.random()*4)];
-        if (r1===r2 && s1===s2) return deal();
-        
-        // Сортировка для ключа
-        const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
-        currentHand = { r1, r2, s1, s2, combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
-        if (i1 > i2) { // Для визуализации ставим старшую слева
-            currentHand.r1 = r2; currentHand.r2 = r1; currentHand.s1 = s2; currentHand.s2 = s1;
-        }
+    // --- ТРЕНАЖЕР ---
+    function setTab(t) {
+        ['ed', 'tr'].forEach(v => document.getElementById('view-'+v).classList.toggle('hidden', v!==t));
+        document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-'+t).classList.add('active');
+        if(t==='tr') deal();
+    }
 
-        const suits = {s:'♠', h:'♥', c:'♣', d:'♦'};
-        const classes = {s:'s', h:'h', c:'c', d:'d'};
-        document.getElementById('cards-spot').innerHTML = `
-            <div class="card ${classes[currentHand.s1]}"><div class="val">${currentHand.r1}</div><div class="suit">${suits[currentHand.s1]}</div></div>
-            <div class="card ${classes[currentHand.s2]}"><div class="val">${currentHand.r2}</div><div class="suit">${suits[currentHand.s2]}</div></div>
-        `;
-    }
+    function deal() {
+        const heroPos = document.getElementById('hero').value;
+        const ab = document.getElementById('alert-box');
+        ab.classList.add('hidden');
+        document.getElementById('next-btn').classList.add('hidden');
 
-    function handleAct(uA) {
-        if (!document.getElementById('next-btn').classList.contains('hidden')) return;
-        const data = rangeData[currentHand.combo] || { a: 'fold', f: 100 };
-        const fb = document.getElementById('feedback');
-        
-        // Верно если: нажато основное действие ИЛИ (действие смешанное и нажато fold)
-        const isCorrect = (uA === data.a) || (data.f < 100 && uA === 'fold');
+        document.querySelectorAll('.pos-node').forEach(n => {
+            n.className = 'pos-node'; if(n.dataset.p === heroPos) n.classList.add('pos-hero');
+        });
 
-        if (isCorrect) {
-            fb.innerHTML = `<span class="text-green-400">ВЕРНО</span><br><span class="opacity-50">${data.a} ${data.f}% / fold ${100-data.f}%</span>`;
-            setTimeout(deal, 1000);
-        } else {
-            fb.innerHTML = `<span class="text-red-400">ОШИБКА</span><br><span>Правильно: ${data.a} ${data.f}%</span>`;
-            document.getElementById('next-btn').classList.remove('hidden');
-        }
-    }
+        const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
+        const suits = ["s","h","c","d"];
+        const s1 = suits[Math.floor(Math.random()*4)], s2 = suits[Math.floor(Math.random()*4)];
+        if (r1===r2 && s1===s2) return deal();
+        
+        const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
+        currentHand = { combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
 
-    async function loadRemote() {
-        const m = document.getElementById('mode').value;
-        const h = document.getElementById('hero').value;
-        try {
-            const r = await fetch(`charts/${m}_${h}.json`);
-            rangeData = await r.json();
-            renderMatrix();
-        } catch(e) { alert("Файл charts/"+m+"_"+h+".json не найден"); }
-    }
+        const icons = {s:'♠', h:'♥', c:'♣', d:'♦'};
+        document.getElementById('cards-spot').innerHTML = `
+            <div class="card ${s1}"><div class="text-xl">${r1}</div><div class="text-4xl self-end mt-auto">${icons[s1]}</div></div>
+            <div class="card ${s2}"><div class="text-xl">${r2}</div><div class="text-4xl self-end mt-auto">${icons[s2]}</div></div>`;
+    }
 
-    function exportJSON() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rangeData, null, 2));
-        const a = document.createElement('a');
-        a.setAttribute("href", dataStr);
-        a.setAttribute("download", `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`);
-        a.click();
-    }
+    function handleAct(uA) {
+        if (!document.getElementById('next-btn').classList.contains('hidden')) return;
+        const d = rangeData[currentHand.combo] || { r: 0, c: 0 };
+        const ab = document.getElementById('alert-box');
+        
+        const isOk = (uA==='raise' && d.r>0) || (uA==='call' && d.c>0) || (uA==='fold' && (d.r+d.c)<100);
+        
+        ab.classList.remove('hidden');
+        if(isOk) {
+            stats.ok++;
+            ab.className = "w-full mb-6 p-4 rounded-xl border bg-green-500/10 border-green-500/20 text-green-500 flex items-center justify-center font-bold text-sm";
+            ab.innerText = "ВЕРНО"; setTimeout(deal, 800);
+        } else {
+            stats.err++;
+            ab.className = "w-full mb-6 p-4 rounded-xl border bg-red-500/10 border-red-500/20 text-red-500 flex items-center justify-center font-bold text-sm";
+            ab.innerText = `ОШИБКА! Best: ${d.r > 0 ? 'RAISE' : (d.c > 0 ? 'CALL' : 'FOLD')}`;
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+        updateStats();
+    }
 
-    init();
+    function updateStats() {
+        document.getElementById('stat-ok').innerText = stats.ok;
+        document.getElementById('stat-err').innerText = stats.err;
+        const total = stats.ok + stats.err;
+        document.getElementById('stat-bar').style.width = (stats.ok / (total || 1) * 100) + '%';
+    }
+
+    function syncUI() {
+        const m = document.getElementById('mode').value;
+        document.getElementById('hero').options[5].disabled = (m === 'RFI');
+    }
+
+    function exportJSON() {
+        const blob = new Blob([JSON.stringify(rangeData, null, 2)], {type : 'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`;
+        a.click();
+    }
+
+    init();
 </script>
 </body>
 </html>
-
