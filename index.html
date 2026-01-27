@@ -2,137 +2,183 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <title>Elite Poker Trainer</title>
+    <title>GTO Range Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        :root { --base: #0d1117; --surf: #161b22; --text: #c9d1d9; --accent: #58a6ff; }
-        body { background: var(--base); color: var(--text); font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; }
+        :root {
+            --base: #1e1e2e; --surface: #313244; --overlay: #45475a;
+            --text: #cdd6f4; --subtext: #a6adc8; --blue: #89b4fa;
+            --red: #f38ba8; --green: #a6e3a1; --yellow: #f9e2af; --mauve: #cba6f7;
+        }
+        body { background-color: var(--base); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; }
         
-        .poker-table { width: 320px; height: 180px; border: 4px solid #30363d; border-radius: 100px; position: relative; margin: 20px 0; background: radial-gradient(#1f242c, #0b0e14); }
-        .pos-node { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #21262d; border: 2px solid #30363d; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; transition: 0.3s; color: #8b949e; }
-        .pos-hero { border-color: #d29922; color: #d29922; box-shadow: 0 0 15px rgba(210,153,34,0.2); transform: scale(1.1); }
-        .pos-villain { border-color: #f85149; color: #f85149; box-shadow: 0 0 15px rgba(248,81,73,0.2); }
+        /* Стилизация слайдера как в GTO Wizard */
+        .freq-slider-container {
+            width: 100%; height: 24px; background: var(--blue); position: relative;
+            border-radius: 6px; overflow: hidden; cursor: pointer;
+        }
+        .freq-bar-raise { position: absolute; height: 100%; background: var(--red); left: 0; }
+        .freq-bar-call { position: absolute; height: 100%; background: var(--green); }
+        .handle {
+            position: absolute; width: 4px; height: 100%; background: white;
+            cursor: col-resize; top: 0; z-index: 20; box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
 
-        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; background: #30363d; }
-        .cell { width: 38px; height: 38px; background: #21262d; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; position: relative; overflow: hidden; }
-        .cell-fill-call { position: absolute; bottom: 0; left: 0; width: 100%; background: #a6e3a1; z-index: 1; }
-        .cell-fill-raise { position: absolute; top: 0; left: 0; width: 100%; background: #f38ba8; z-index: 1; }
-        .cell-text { position: relative; z-index: 10; color: #c9d1d9; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
+        /* Матрица */
+        .cell {
+            aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; 
+            justify-content: center; font-size: 10px; font-weight: 600; cursor: pointer;
+            position: relative; overflow: hidden; transition: transform 0.1s;
+        }
+        .cell:hover { transform: scale(1.05); z-index: 10; }
+        .cell-bg { position: absolute; inset: 0; display: flex; flex-direction: column; }
+        .cell-text { position: relative; z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 
-        .card { width: 85px; height: 120px; border-radius: 10px; display: flex; flex-direction: column; padding: 12px; font-weight: 900; color: white; border: 1px solid rgba(255,255,255,0.1); }
-        .s { background: #21262d; } .h { background: #da3633; } .c { background: #238636; } .d { background: #1f6feb; }
-        .card .val { font-size: 30px; line-height: 1; } .card .suit { font-size: 38px; align-self: flex-end; margin-top: auto; }
+        /* Таблица */
+        .poker-table {
+            width: 100%; max-width: 340px; height: 180px; border: 6px solid var(--overlay);
+            border-radius: 100px; position: relative; background: radial-gradient(#313244, #181825);
+        }
+        .pos-node {
+            position: absolute; width: 42px; height: 42px; border-radius: 50%;
+            background: var(--surface); border: 2px solid var(--overlay);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 800; color: var(--subtext);
+        }
+        .pos-hero { border-color: var(--mauve); color: var(--mauve); box-shadow: 0 0 15px var(--mauve); }
+        .pos-villain { border-color: var(--red); color: var(--red); }
 
-        .btn-act { transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); font-weight: 700; padding: 12px; border-radius: 8px; text-transform: uppercase; font-size: 13px; }
-        .disabled { opacity: 0.2; pointer-events: none; }
-        .active-tab { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
+        /* Карты */
+        .card { width: 80px; height: 115px; border-radius: 8px; padding: 10px; font-weight: 800; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .card.s { background: #45475a; } 
+        .card.h { background: var(--red); }
+        .card.c { background: var(--green); color: white; }
+        .card.d { background: var(--blue); }
+
+        .btn-primary { background: var(--mauve); color: var(--base); font-weight: 800; padding: 10px 20px; border-radius: 8px; transition: 0.2s; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-stop { background: var(--red); color: var(--base); font-weight: 800; padding: 10px 20px; border-radius: 8px; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="p-4">
+<body class="flex flex-col items-center min-h-screen pb-10">
 
-    <div class="flex gap-10 mb-6 font-black uppercase text-[10px] tracking-[0.2em]">
-        <button onclick="setTab('ed')" id="tab-ed" class="active-tab pb-1">Editor</button>
-        <button onclick="setTab('tr')" id="tab-tr" class="opacity-40 pb-1">Trainer</button>
-    </div>
+    <nav class="w-full bg-[#11111b] p-4 flex justify-center gap-6 border-b border-surface">
+        <button onclick="switchView('ed')" class="nav-link font-bold text-sm opacity-50">Editor</button>
+        <button onclick="switchView('lib')" class="nav-link font-bold text-sm opacity-50">Library</button>
+        <button onclick="switchView('tr')" class="nav-link font-bold text-sm opacity-50">Trainer</button>
+    </nav>
 
-    <div class="bg-[#161b22] p-4 rounded-2xl flex gap-6 mb-8 border border-[#30363d] shadow-2xl">
-        <div class="flex flex-col gap-1">
-            <label class="text-[10px] uppercase opacity-40 font-bold">Mode</label>
-            <select id="mode" onchange="updateUIConfigs()" class="bg-[#0d1117] p-2 rounded border border-gray-700 outline-none text-sm">
+    <div id="config-bar" class="w-full max-w-4xl p-6 flex flex-wrap gap-4 justify-center items-end">
+        <div class="flex flex-col gap-2">
+            <label class="text-[10px] font-bold uppercase opacity-50">Mode</label>
+            <select id="mode" onchange="syncPositions()" class="bg-surface p-2 rounded-lg outline-none text-sm border border-overlay">
                 <option value="RFI">RFI</option>
                 <option value="vsOpen">vs Open</option>
                 <option value="vs3bet">vs 3-Bet</option>
             </select>
         </div>
-        <div class="flex flex-col gap-1">
-            <label class="text-[10px] uppercase opacity-40 font-bold">Hero</label>
-            <select id="hero" onchange="updateUIConfigs()" class="bg-[#0d1117] p-2 rounded border border-gray-700 outline-none text-sm">
-                <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option value="BB">BB</option>
+        <div class="flex flex-col gap-2">
+            <label class="text-[10px] font-bold uppercase opacity-50">Hero</label>
+            <select id="hero" onchange="syncPositions()" class="bg-surface p-2 rounded-lg outline-none text-sm border border-overlay">
+                <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
             </select>
         </div>
-        <div class="flex flex-col gap-1" id="villain-select-container">
-            <label class="text-[10px] uppercase opacity-40 font-bold">Villain</label>
-            <select id="villain" class="bg-[#0d1117] p-2 rounded border border-gray-700 outline-none text-sm">
-                </select>
+        <div id="v-container" class="flex flex-col gap-2">
+            <label class="text-[10px] font-bold uppercase opacity-50">Villain</label>
+            <select id="villain" class="bg-surface p-2 rounded-lg outline-none text-sm border border-overlay w-20"></select>
         </div>
-        <button onclick="loadChart()" class="mt-5 px-4 bg-blue-600/10 text-blue-400 border border-blue-600/30 rounded-lg text-xs hover:bg-blue-600/20">Load JSON</button>
+        <button id="start-btn" onclick="startTrainer()" class="btn-primary">Приступить</button>
+        <button id="stop-btn" onclick="stopTrainer()" class="btn-stop hidden">Остановить</button>
     </div>
 
-    <div id="view-ed" class="flex flex-col items-center">
-        <div class="flex gap-6 items-center mb-6 bg-[#161b22] p-4 rounded-xl border border-white/5">
-            <div class="flex gap-3">
-                <button class="dot w-10 h-10 rounded-lg bg-[#f38ba8] border-2 border-transparent" id="btn-raise" data-a="raise"></button>
-                <button class="dot w-10 h-10 rounded-lg bg-[#a6e3a1] border-2 border-transparent" id="btn-call" data-a="call"></button>
+    <main class="w-full max-w-5xl flex flex-col items-center px-4">
+        
+        <div id="view-matrix" class="w-full flex flex-col items-center gap-6">
+            <div class="w-full max-w-md bg-surface p-4 rounded-xl border border-overlay shadow-xl">
+                <div class="flex justify-between text-[10px] font-black mb-2 px-1">
+                    <span class="text-red">RAISE: <span id="val-r">30</span>%</span>
+                    <span class="text-green">CALL: <span id="val-c">40</span>%</span>
+                    <span class="text-blue">FOLD: <span id="val-f">30</span>%</span>
+                </div>
+                <div class="freq-slider-container" id="slider-root">
+                    <div class="freq-bar-raise" id="bar-r" style="width: 30%;"></div>
+                    <div class="freq-bar-call" id="bar-c" style="left: 30%; width: 40%;"></div>
+                    <div class="handle" id="handle-1" style="left: 30%;"></div>
+                    <div class="handle" id="handle-2" style="left: 70%;"></div>
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button onclick="loadChart()" class="text-[10px] bg-overlay px-3 py-1 rounded">Загрузить из файла</button>
+                    <button onclick="saveChart()" class="text-[10px] bg-overlay px-3 py-1 rounded">Сохранить</button>
+                </div>
             </div>
-            <div class="flex flex-col gap-1">
-                <input type="range" id="freq" min="0" max="100" step="10" value="100" class="w-32 accent-blue-500">
-                <div class="flex justify-between text-[10px] font-mono opacity-50"><span>FOLD</span><span id="freq-txt">100% ACT</span></div>
+            <div id="matrix" class="grid grid-cols-13 gap-1 bg-overlay p-1 rounded-lg w-full max-w-[550px]"></div>
+        </div>
+
+        <div id="view-trainer" class="hidden w-full flex flex-col items-center gap-8 animate-in fade-in">
+            <div class="poker-table">
+                <div class="pos-node" style="top: -21px; left: 149px;" data-p="UTG">UTG</div>
+                <div class="pos-node" style="top: 25px; right: -21px;" data-p="MP">MP</div>
+                <div class="pos-node" style="bottom: 25px; right: -21px;" data-p="CO">CO</div>
+                <div class="pos-node" style="bottom: -21px; left: 149px;" data-p="BTN">BTN</div>
+                <div class="pos-node" style="bottom: 25px; left: -21px;" data-p="SB">SB</div>
+                <div class="pos-node" style="top: 25px; left: -21px;" data-p="BB">BB</div>
             </div>
-            <button onclick="rangeData={}; renderMatrix()" class="text-[10px] text-red-400 uppercase font-bold ml-4 hover:underline">Clear</button>
-        </div>
-        <div id="matrix" class="matrix shadow-2xl"></div>
-    </div>
 
-    <div id="view-tr" class="hidden flex flex-col items-center w-full max-w-sm">
-        <div class="poker-table" id="table-visual">
-            <div class="pos-node" style="top: -20px; left: 140px;" data-p="UTG">UTG</div>
-            <div class="pos-node" style="top: 25px; right: -20px;" data-p="MP">MP</div>
-            <div class="pos-node" style="bottom: 25px; right: -20px;" data-p="CO">CO</div>
-            <div class="pos-node" style="bottom: -20px; left: 140px;" data-p="BTN">BTN</div>
-            <div class="pos-node" style="bottom: 25px; left: -20px;" data-p="SB">SB</div>
-            <div class="pos-node" style="top: 25px; left: -20px;" data-p="BB">BB</div>
-        </div>
+            <div id="cards-spot" class="flex gap-4"></div>
+            
+            <div id="feedback" class="h-10 text-center font-bold"></div>
 
-        <div id="cards-spot" class="flex gap-4 mb-8"></div>
-        <div id="feedback" class="h-16 text-center text-sm font-medium leading-relaxed"></div>
-
-        <div class="grid grid-cols-2 gap-4 w-full">
-            <button onclick="handleAct('raise')" class="btn-act bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500 hover:text-white">Raise</button>
-            <button id="tr-call" onclick="handleAct('call')" class="btn-act bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500 hover:text-white">Call</button>
-            <button onclick="handleAct('fold')" class="btn-act bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500 hover:text-white col-span-2">Fold</button>
+            <div class="grid grid-cols-2 gap-4 w-full max-w-sm">
+                <button onclick="tAct('raise')" class="p-4 rounded-xl bg-red/10 border border-red/20 text-red font-black hover:bg-red hover:text-base transition">RAISE</button>
+                <button id="t-call-btn" onclick="tAct('call')" class="p-4 rounded-xl bg-green/10 border border-green/20 text-green font-black hover:bg-green hover:text-base transition">CALL</button>
+                <button onclick="tAct('fold')" class="p-4 rounded-xl bg-blue/10 border border-blue/20 text-blue font-black hover:bg-blue hover:text-base transition col-span-2">FOLD</button>
+            </div>
+            <button id="next-btn" onclick="deal()" class="hidden bg-white text-base px-10 py-3 rounded-full font-black text-xs tracking-widest">NEXT</button>
         </div>
-        <button id="next-btn" onclick="deal()" class="mt-8 py-3 px-10 bg-white text-black rounded-full font-black text-xs tracking-widest hidden">NEXT HAND</button>
-    </div>
+    </main>
 
 <script>
     const RANKS = "AKQJT98765432".split("");
     const POS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
-    let rangeData = {}; 
-    let selAction = 'raise';
-    let isDrawing = false;
+    let rangeData = {};
+    let activeView = 'ed';
+    let trainerRunning = false;
     let currentHand = null;
 
-    function updateUIConfigs() {
-        const mode = document.getElementById('mode').value;
-        const hero = document.getElementById('hero');
-        const villain = document.getElementById('villain');
-        const heroVal = hero.value;
+    // Слайдер частот
+    let f1 = 30, f2 = 70; // позиции ручек в %
+    const h1 = document.getElementById('handle-1'), h2 = document.getElementById('handle-2');
+    const root = document.getElementById('slider-root');
 
-        // 1. Блокировка BB для RFI
-        hero.options[5].disabled = (mode === 'RFI');
-        if (mode === 'RFI' && heroVal === 'BB') hero.value = 'SB';
-
-        // 2. Настройка доступных действий
-        const callBtn = document.getElementById('btn-call');
-        if (mode === 'RFI') {
-            callBtn.classList.add('disabled');
-            if(selAction === 'call') document.getElementById('btn-raise').click();
-        } else {
-            callBtn.classList.remove('disabled');
-        }
-
-        // 3. Список Villain в зависимости от режима
-        villain.innerHTML = '';
-        const hIdx = POS.indexOf(hero.value);
-        if (mode === 'vsOpen') {
-            POS.slice(0, hIdx).forEach(p => villain.add(new Option(p, p)));
-        } else if (mode === 'vs3bet') {
-            POS.slice(hIdx + 1).forEach(p => villain.add(new Option(p, p)));
-        }
-        document.getElementById('villain-select-container').style.display = (mode==='RFI' ? 'none' : 'flex');
+    function updateBars() {
+        document.getElementById('bar-r').style.width = f1 + '%';
+        document.getElementById('bar-c').style.left = f1 + '%';
+        document.getElementById('bar-c').style.width = (f2 - f1) + '%';
+        h1.style.left = f1 + '%';
+        h2.style.left = f2 + '%';
+        document.getElementById('val-r').innerText = f1;
+        document.getElementById('val-c').innerText = f2 - f1;
+        document.getElementById('val-f').innerText = 100 - f2;
     }
 
-    function init() {
+    [h1, h2].forEach((h, i) => {
+        h.onmousedown = (e) => {
+            const move = (em) => {
+                let rect = root.getBoundingClientRect();
+                let x = ((em.clientX - rect.left) / rect.width) * 100;
+                x = Math.max(0, Math.min(100, Math.round(x)));
+                if (i === 0) f1 = Math.min(x, f2); else f2 = Math.max(x, f1);
+                updateBars();
+            };
+            window.onmousemove = move;
+            window.onmouseup = () => window.onmousemove = null;
+        };
+    });
+
+    function initMatrix() {
         const mx = document.getElementById('matrix');
         RANKS.forEach((r1, i) => {
             RANKS.forEach((r2, j) => {
@@ -140,73 +186,88 @@
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.hand = combo;
-                cell.innerHTML = `<div class="cell-fill-call" style="height:0"></div><div class="cell-fill-raise" style="height:0"></div><div class="cell-text">${combo}</div>`;
-                cell.onmousedown = (e) => { e.preventDefault(); isDrawing=true; paint(cell); };
-                cell.onmouseover = () => { if(isDrawing) paint(cell); };
+                cell.innerHTML = `<div class="cell-bg"></div><div class="cell-text">${combo}</div>`;
+                cell.onmousedown = (e) => { e.preventDefault(); paint(cell); };
                 mx.appendChild(cell);
             });
         });
-        window.onmouseup = () => isDrawing = false;
-        document.querySelectorAll('.dot').forEach(d => d.onclick = () => {
-            selAction = d.dataset.a;
-            document.querySelectorAll('.dot').forEach(x=>x.style.borderColor='transparent');
-            d.style.borderColor = 'white';
-        });
-        document.getElementById('btn-raise').click();
-        document.getElementById('freq').oninput = (e) => document.getElementById('freq-txt').innerText = e.target.value + '% ACT';
-        updateUIConfigs();
+        renderMatrix();
     }
 
     function paint(cell) {
-        const h = cell.dataset.hand;
-        const f = parseInt(document.getElementById('freq').value);
-        if (!rangeData[h]) rangeData[h] = { raise: 0, call: 0 };
-        
-        if (selAction === 'raise') {
-            rangeData[h].raise = f;
-            if (rangeData[h].raise + rangeData[h].call > 100) rangeData[h].call = 100 - f;
-        } else {
-            rangeData[h].call = f;
-            if (rangeData[h].raise + rangeData[h].call > 100) rangeData[h].raise = 100 - f;
-        }
+        if(trainerRunning) return;
+        rangeData[cell.dataset.hand] = { r: f1, c: f2 - f1 };
         renderMatrix();
     }
 
     function renderMatrix() {
         document.querySelectorAll('.cell').forEach(c => {
-            const d = rangeData[c.dataset.hand];
-            const fCall = c.querySelector('.cell-fill-call');
-            const fRaise = c.querySelector('.cell-fill-raise');
-            if (d) {
-                fCall.style.height = d.call + '%';
-                fRaise.style.height = d.raise + '%';
-                fRaise.style.top = (100 - d.raise) + '%'; // Рейз сверху
-                fCall.style.bottom = '0%'; // Колл снизу
-            }
+            const d = rangeData[c.dataset.hand] || { r: 0, c: 0 };
+            const bg = c.querySelector('.cell-bg');
+            // Catppuccin Fold (Blue) - база
+            bg.style.backgroundColor = 'var(--blue)';
+            bg.innerHTML = `
+                <div style="height:${d.r}%; background:var(--red)"></div>
+                <div style="height:${d.c}%; background:var(--green)"></div>
+            `;
         });
     }
 
-    function setTab(t) {
-        document.getElementById('view-ed').classList.toggle('hidden', t!=='ed');
-        document.getElementById('view-tr').classList.toggle('hidden', t!=='tr');
-        document.getElementById('tab-ed').className = t==='ed' ? 'active-tab pb-1' : 'opacity-40 pb-1';
-        document.getElementById('tab-tr').className = t==='tr' ? 'active-tab pb-1' : 'opacity-40 pb-1';
-        if(t==='tr') deal();
+    function syncPositions() {
+        const m = document.getElementById('mode').value;
+        const h = document.getElementById('hero');
+        const v = document.getElementById('villain');
+        const hIdx = POS.indexOf(h.value);
+
+        if(m === 'RFI' && h.value === 'BB') h.value = 'SB';
+        h.options[5].disabled = (m === 'RFI');
+
+        v.innerHTML = '';
+        if(m === 'vsOpen') POS.slice(0, hIdx).forEach(p => v.add(new Option(p,p)));
+        if(m === 'vs3bet') POS.slice(hIdx + 1).forEach(p => v.add(new Option(p,p)));
+        document.getElementById('v-container').style.display = (m==='RFI' ? 'none' : 'flex');
+    }
+
+    function switchView(v) {
+        if(trainerRunning && v !== 'tr') return alert("Сначала остановите тренировку!");
+        activeView = v;
+        document.querySelectorAll('.nav-link').forEach(l => l.style.opacity = '0.5');
+        document.getElementById(`tab-${v}`).style.opacity = '1';
+        
+        document.getElementById('view-matrix').classList.toggle('hidden', v === 'tr');
+        document.getElementById('view-trainer').classList.toggle('hidden', v !== 'tr');
+    }
+
+    function startTrainer() {
+        trainerRunning = true;
+        document.getElementById('start-btn').classList.add('hidden');
+        document.getElementById('stop-btn').classList.remove('hidden');
+        document.querySelectorAll('#config-bar select').forEach(s => s.disabled = true);
+        switchView('tr');
+        deal();
+    }
+
+    function stopTrainer() {
+        trainerRunning = false;
+        document.getElementById('start-btn').classList.remove('hidden');
+        document.getElementById('stop-btn').classList.add('hidden');
+        document.querySelectorAll('#config-bar select').forEach(s => s.disabled = false);
+        document.getElementById('feedback').innerText = "";
     }
 
     function deal() {
-        const mode = document.getElementById('mode').value;
+        const m = document.getElementById('mode').value;
         const hPos = document.getElementById('hero').value;
         const vPos = document.getElementById('villain').value;
-        
-        document.getElementById('feedback').innerText = "";
+
         document.getElementById('next-btn').classList.add('hidden');
-        document.getElementById('tr-call').classList.toggle('disabled', mode === 'RFI');
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('t-call-btn').classList.toggle('disabled', m === 'RFI');
 
         document.querySelectorAll('.pos-node').forEach(n => {
             n.className = 'pos-node';
-            if (n.dataset.p === hPos) n.classList.add('pos-hero');
-            if (mode !== 'RFI' && n.dataset.p === vPos) n.classList.add('pos-villain');
+            if(n.dataset.p === hPos) n.classList.add('pos-hero');
+            if(m !== 'RFI' && n.dataset.p === vPos) n.classList.add('pos-villain');
         });
 
         const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
@@ -216,42 +277,50 @@
         const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
         currentHand = { r1, r2, s1, s2, combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
         
-        // Визуализация старшей карты слева
-        let showR1 = r1, showR2 = r2, showS1 = s1, showS2 = s2;
-        if (i1 > i2) { [showR1, showR2] = [r2, r1]; [showS1, showS2] = [s2, s1]; }
-
-        const suits = {s:'♠', h:'♥', c:'♣', d:'♦'}, classes = {s:'s', h:'h', c:'c', d:'d'};
+        const suits = {s:'♠', h:'♥', c:'♣', d:'♦'};
         document.getElementById('cards-spot').innerHTML = `
-            <div class="card ${classes[showS1]}"><div class="val">${showR1}</div><div class="suit">${suits[showS1]}</div></div>
-            <div class="card ${classes[showS2]}"><div class="val">${showR2}</div><div class="suit">${suits[showS2]}</div></div>
+            <div class="card ${s1}"><div class="text-xl">${r1}</div><div class="text-3xl mt-auto self-end">${suits[s1]}</div></div>
+            <div class="card ${s2}"><div class="text-xl">${r2}</div><div class="text-3xl mt-auto self-end">${suits[s2]}</div></div>
         `;
     }
 
-    function handleAct(uA) {
-        if (!document.getElementById('next-btn').classList.contains('hidden')) return;
-        const d = rangeData[currentHand.combo] || { raise: 0, call: 0 };
+    function tAct(uA) {
+        if(!document.getElementById('next-btn').classList.contains('hidden')) return;
+        const d = rangeData[currentHand.combo] || { r: 0, c: 0 };
         const fb = document.getElementById('feedback');
         
-        let correct = false;
-        if (uA === 'raise' && d.raise > 0) correct = true;
-        else if (uA === 'call' && d.call > 0) correct = true;
-        else if (uA === 'fold' && (d.raise + d.call) < 100) correct = true;
+        let isOk = false;
+        if(uA === 'raise' && d.r > 0) isOk = true;
+        else if(uA === 'call' && d.c > 0) isOk = true;
+        else if(uA === 'fold' && (d.r + d.c) < 100) isOk = true;
 
-        if (correct) {
-            fb.innerHTML = `<span class="text-green-400 font-black">GOOD</span><br><span class="text-[11px] opacity-60">RAISE: ${d.raise}% | CALL: ${d.call}% | FOLD: ${100-d.raise-d.call}%</span>`;
-            setTimeout(deal, 1200);
+        if(isOk) {
+            fb.innerHTML = `<span class="text-green">ВЕРНО</span><br><span class="text-[10px] opacity-50">R:${d.r}% C:${d.c}% F:${100-d.r-d.c}%</span>`;
+            setTimeout(deal, 1000);
         } else {
-            fb.innerHTML = `<span class="text-red-500 font-black">MISTAKE</span><br><span class="text-[11px]">Best was: ${d.raise > d.call ? 'RAISE' : (d.call > 0 ? 'CALL' : 'FOLD')}</span>`;
+            fb.innerHTML = `<span class="text-red">ОШИБКА</span><br><span class="text-[10px]">Верно: ${d.r > 0 ? 'Raise' : (d.c > 0 ? 'Call' : 'Fold')}</span>`;
             document.getElementById('next-btn').classList.remove('hidden');
         }
     }
 
-    function loadChart() {
-        const path = `charts/${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`;
-        fetch(path).then(r => r.json()).then(data => { rangeData = data; renderMatrix(); }).catch(() => alert("File not found"));
+    async function loadChart() {
+        const m = document.getElementById('mode').value, h = document.getElementById('hero').value;
+        try {
+            const r = await fetch(`charts/${m}_${h}.json`);
+            rangeData = await r.json();
+            renderMatrix();
+        } catch(e) { alert("Файл не найден"); }
     }
 
-    init();
+    function saveChart() {
+        const blob = new Blob([JSON.stringify(rangeData, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`;
+        a.click();
+    }
+
+    initMatrix(); updateBars(); syncPositions();
 </script>
 </body>
 </html>
