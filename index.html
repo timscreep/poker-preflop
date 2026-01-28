@@ -75,10 +75,9 @@
         <div id="feedback" class="h-12 text-center mb-4 text-sm font-bold"></div>
 
         <div class="grid grid-cols-2 gap-3 w-full">
+            <button onclick="handleAct('fold')" class="p-3 rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500 hover:text-white transition">FOLD</button>
             <button onclick="handleAct('raise')" class="p-3 rounded bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white transition">RAISE</button>
             <button onclick="handleAct('call')" class="p-3 rounded bg-green-500/10 border border-green-500/30 hover:bg-green-500 hover:text-white transition">CALL</button>
-            <button onclick="handleAct('check')" class="p-3 rounded bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black transition">CHECK</button>
-            <button onclick="handleAct('fold')" class="p-3 rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500 hover:text-white transition">FOLD</button>
         </div>
         <button id="next-btn" onclick="deal()" class="mt-6 py-2 px-8 bg-white text-black rounded font-bold hidden">NEXT</button>
     </div>
