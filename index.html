@@ -2,240 +2,1523 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GTO Trainer Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --base: #0b0e14; --surf: #161b22; --text: #c9d1d9; --accent: #58a6ff; }
-        body { background: var(--base); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; }
+        :root { 
+            --base: #0b0e14; 
+            --surf: #161b22; 
+            --text: #c9d1d9; 
+            --accent: #58a6ff; 
+        }
+        body { 
+            background: var(--base); 
+            color: var(--text); 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
         
-        /* Стол */
-        .poker-table { width: 300px; height: 160px; border: 4px solid #30363d; border-radius: 100px; position: relative; margin: 20px 0; background: radial-gradient(#1f242c, #0b0e14); }
-        .pos-node { position: absolute; width: 36px; height: 36px; border-radius: 50%; background: #21262d; border: 2px solid #30363d; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; transition: 0.3s; }
-        .pos-hero { border-color: #d29922; color: #d29922; box-shadow: 0 0 10px rgba(210,153,34,0.3); }
-        .pos-villain { border-color: #f85149; color: #f85149; }
+        /* Адаптивный покерный стол под мобильные устройства */
+        .poker-table { 
+            width: 290px; 
+            height: 150px; 
+            border: 4px solid #30363d; 
+            border-radius: 100px; 
+            position: relative; 
+            margin: 25px 0; 
+            background: radial-gradient(#1f242c, #0b0e14); 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+        .pos-node { 
+            position: absolute; 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 50%; 
+            background: #21262d; 
+            border: 2px solid #30363d; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            font-size: 10px; 
+            font-weight: bold; 
+            transition: all 0.25s ease; 
+            box-shadow: 0 3px 5px rgba(0,0,0,0.4);
+            line-height: 1;
+            user-select: none;
+        }
+        .pos-action-badge {
+            font-size: 7px;
+            text-transform: uppercase;
+            font-weight: 850;
+            margin-top: 1px;
+            letter-spacing: 0.3px;
+        }
+        .pos-hero { 
+            border-color: #d29922; 
+            color: #d29922; 
+            box-shadow: 0 0 12px rgba(210,153,34,0.4); 
+            transform: scale(1.05);
+        }
+        .pos-villain { 
+            border-color: #f85149; 
+            color: #f85149; 
+            box-shadow: 0 0 12px rgba(248,81,73,0.4);
+        }
 
-        /* Матрица */
-        .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; background: #30363d; border: 1px solid #30363d; }
-        .cell { width: 36px; height: 36px; background: #89b4fa; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; position: relative; }
-        .cell-fill { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 1; }
-        .cell-text { position: relative; z-index: 2; color: #000; font-weight: 600; }
+        /* Адаптивные покерные карты */
+        .card { 
+            width: 72px; 
+            height: 105px; 
+            border-radius: 6px; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 8px; 
+            font-weight: bold; 
+            color: white; 
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .s { background: linear-gradient(135deg, #21262d, #0b0e14); border: 1px solid #30363d; } 
+        .h { background: linear-gradient(135deg, #da3633, #a02020); border: 1px solid #ff7b72; } 
+        .c { background: linear-gradient(135deg, #238636, #165c26); border: 1px solid #46c259; } 
+        .d { background: linear-gradient(135deg, #1f6feb, #114291); border: 1px solid #79c0ff; }
+        .card .val { font-size: 22px; line-height: 1; } 
+        .card .suit { font-size: 30px; align-self: flex-end; margin-top: auto; line-height: 1; }
 
-        /* Карты */
-        .card { width: 80px; height: 110px; border-radius: 8px; display: flex; flex-direction: column; padding: 10px; font-weight: bold; color: white; }
-        .s { background: #21262d; } .h { background: #da3633; } .c { background: #238636; } .d { background: #1f6feb; }
-        .card .val { font-size: 24px; } .card .suit { font-size: 32px; align-self: flex-end; margin-top: auto; }
+        .btn-action { 
+            transition: transform 0.1s, background-color 0.15s; 
+            touch-action: manipulation;
+        }
+        .btn-action:active { 
+            transform: scale(0.96); 
+        }
 
-        .active-tab { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
-        .hidden { display: none !important; }
+        /* Полностью резиновая матрица диапазонов */
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 1.5px;
+            width: 100%;
+            max-width: 440px;
+            background: #161b22;
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+        .cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(7.5px, 2.2vw, 11px);
+            font-weight: 700;
+            border-radius: 1.5px;
+            color: rgba(255,255,255,0.9);
+            user-select: none;
+        }
+        @media (hover: hover) {
+            .cell:hover {
+                transform: scale(1.1);
+                z-index: 10;
+            }
+        }
+        .cell-fold { background-color: #21262d; color: #484f58; border: 1px solid #161b22; }
+        .cell-raise { background-color: #da3633; color: #ffffff; text-shadow: 0 1px 1.5px rgba(0,0,0,0.6); }
+        .cell-call { background-color: #d29922; color: #ffffff; text-shadow: 0 1px 1.5px rgba(0,0,0,0.6); }
+
+        /* Табы */
+        .tab-btn { transition: all 0.2s; touch-action: manipulation; }
+        .tab-active { background-color: #1f6feb; color: white; border-color: #1f6feb; }
+        .tab-inactive { background-color: transparent; color: #8b949e; border-color: #30363d; }
     </style>
 </head>
-<body class="p-4">
+<body>
 
-    <div class="flex gap-8 mb-6 font-bold uppercase text-xs tracking-widest">
-        <button onclick="setTab('ed')" id="tab-ed" class="active-tab pb-1">Редактор</button>
-        <button onclick="setTab('tr')" id="tab-tr" class="opacity-50 pb-1">Тренажер</button>
-    </div>
-
-    <div class="bg-[#161b22] p-3 rounded-lg flex gap-4 mb-6 border border-[#30363d]">
-        <select id="mode" onchange="syncUI()" class="bg-[#0d1117] p-1 rounded text-sm outline-none">
-            <option value="RFI">RFI</option>
-            <option value="vsOpen">vs Open</option>
-            <option value="vs3bet">vs 3-Bet</option>
-        </select>
-        <select id="hero" onchange="syncUI()" class="bg-[#0d1117] p-1 rounded text-sm outline-none">
-            <option>UTG</option><option>MP</option><option>CO</option><option>BTN</option><option>SB</option><option>BB</option>
-        </select>
-        <button onclick="loadRemote()" class="text-xs bg-blue-600/20 text-blue-400 px-3 py-1 rounded border border-blue-600/30">Загрузить JSON</button>
-    </div>
-
-    <div id="view-ed" class="flex flex-col items-center">
-        <div class="flex gap-4 items-center mb-4 bg-[#161b22] p-3 rounded-lg w-full justify-center">
-            <button class="dot w-8 h-8 rounded bg-[#f38ba8]" data-a="raise"></button>
-            <button class="dot w-8 h-8 rounded bg-[#a6e3a1]" data-a="call"></button>
-            <button class="dot w-8 h-8 rounded bg-[#f9e2af]" data-a="check"></button>
-            <input type="range" id="freq" min="0" max="100" step="10" value="100" class="w-24">
-            <span id="freq-txt" class="text-xs font-mono w-8">100%</span>
-        </div>
-        <div id="matrix" class="matrix"></div>
-        <button onclick="exportJSON()" class="mt-4 text-[10px] opacity-30 hover:opacity-100 uppercase">Экспорт в файл</button>
-    </div>
-
-    <div id="view-tr" class="hidden flex flex-col items-center w-full max-w-sm">
-        <div class="poker-table" id="table-visual">
-            <div class="pos-node" style="top: -18px; left: 132px;" data-p="UTG">UTG</div>
-            <div class="pos-node" style="top: 20px; right: -18px;" data-p="MP">MP</div>
-            <div class="pos-node" style="bottom: 20px; right: -18px;" data-p="CO">CO</div>
-            <div class="pos-node" style="bottom: -18px; left: 132px;" data-p="BTN">BTN</div>
-            <div class="pos-node" style="bottom: 20px; left: -18px;" data-p="SB">SB</div>
-            <div class="pos-node" style="top: 20px; left: -18px;" data-p="BB">BB</div>
-        </div>
-
-        <div id="cards-spot" class="flex gap-4 mb-8 h-[110px]"></div>
+    <div class="w-full max-w-md flex flex-col items-center">
         
-        <div id="feedback" class="h-12 text-center mb-4 text-sm font-bold"></div>
+        <!-- Заголовок -->
+        <h1 class="text-xl sm:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#58a6ff] to-[#3fb950] mb-2 sm:mb-3 tracking-wider uppercase text-center">
+            Preflop Trainer
+        </h1>
 
-        <div class="grid grid-cols-2 gap-3 w-full">
-            <button onclick="handleAct('fold')" class="p-3 rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500 hover:text-white transition">FOLD</button>
-            <button onclick="handleAct('raise')" class="p-3 rounded bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white transition">RAISE</button>
-            <button onclick="handleAct('call')" class="p-3 rounded bg-green-500/10 border border-green-500/30 hover:bg-green-500 hover:text-white transition">CALL</button>
+        <!-- Навигация (Табы) -->
+        <div class="flex w-full mb-3 gap-2 bg-[#161b22] p-1 rounded-lg border border-[#30363d]">
+            <button id="tab-trainer" onclick="switchView('trainer')" class="tab-btn tab-active flex-1 py-2 rounded text-xs sm:text-sm font-bold uppercase tracking-wider">
+                Тренажер
+            </button>
+            <button id="tab-viewer" onclick="switchView('viewer')" class="tab-btn tab-inactive flex-1 py-2 rounded text-xs sm:text-sm font-bold uppercase tracking-wider">
+                Диапазоны
+            </button>
         </div>
-        <button id="next-btn" onclick="deal()" class="mt-6 py-2 px-8 bg-white text-black rounded font-bold hidden">NEXT</button>
+
+        <!-- Настройки ситуации -->
+        <div class="bg-[#161b22] p-3 sm:p-4 rounded-xl flex gap-3 w-full justify-center border border-[#30363d] shadow-lg mb-3">
+            <div class="flex flex-col gap-1 w-1/2">
+                <label class="text-[9px] text-gray-400 uppercase font-bold tracking-wider">Режим</label>
+                <select id="mode" onchange="syncUI()" class="bg-[#0d1117] border border-[#30363d] text-gray-200 p-2 rounded-md text-xs sm:text-sm outline-none focus:border-[#58a6ff] transition cursor-pointer">
+                    <option value="RFI">RFI (Open Raise)</option>
+                    <option value="vsOpen">vs Open</option>
+                    <option value="vs3bet">vs 3-Bet</option>
+                </select>
+            </div>
+            <div class="flex flex-col gap-1 w-1/2">
+                <label class="text-[9px] text-gray-400 uppercase font-bold tracking-wider">Наша позиция</label>
+                <select id="hero" onchange="syncUI()" class="bg-[#0d1117] border border-[#30363d] text-gray-200 p-2 rounded-md text-xs sm:text-sm outline-none focus:border-[#58a6ff] transition cursor-pointer">
+                    <option value="UTG">UTG</option>
+                    <option value="MP">MP</option>
+                    <option value="CO">CO</option>
+                    <option value="BTN">BTN</option>
+                    <option value="SB">SB</option>
+                    <option value="BB">BB</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Дополнительный фильтр оппонента для просмотра диапазонов -->
+        <div id="viewer-villain-selector" class="bg-[#161b22] px-4 py-2.5 rounded-xl flex gap-4 w-full justify-between items-center border border-[#30363d] shadow-lg mb-3 hidden">
+            <label class="text-xs text-gray-400 font-bold uppercase tracking-wider">Оппонент:</label>
+            <select id="viewer-villain" onchange="renderMatrix()" class="bg-[#0d1117] border border-[#30363d] text-gray-200 p-1 px-3 rounded text-xs sm:text-sm outline-none cursor-pointer">
+                <!-- Опции заполняются динамически JS в зависимости от позиции Hero -->
+            </select>
+        </div>
+
+        <!-- Экшен-бар (информационная панель ситуации) -->
+        <div id="action-panel" class="w-full bg-[#1f242c] border border-blue-500/20 rounded-xl p-2.5 sm:p-3 mb-3 flex items-center justify-between shadow-inner">
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
+                <span id="action-desc" class="text-[11px] sm:text-xs font-mono text-gray-300 truncate whitespace-normal leading-tight">UTG фолд, вы на MP...</span>
+            </div>
+            <span id="villain-pos-badge" class="text-[9px] font-bold px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded border border-red-500/20 ml-2 whitespace-nowrap hidden">vs BTN</span>
+        </div>
+
+        <!-- VIEWER: Просмотр матриц -->
+        <div id="view-viewer" class="w-full flex flex-col items-center hidden">
+            <div class="mb-2 w-full flex justify-between items-center px-1">
+                <span id="range-status" class="text-[9px] font-mono px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded border border-green-500/30">
+                    Точный стандартный диапазон
+                </span>
+                <div class="flex gap-1.5 text-[9px] font-bold uppercase">
+                    <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-[#da3633] rounded-sm"></div> Rz</div>
+                    <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-[#d29922] rounded-sm"></div> Cl</div>
+                    <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-[#21262d] border border-[#30363d] rounded-sm"></div> Fd</div>
+                </div>
+            </div>
+            <div id="matrix-container" class="matrix-grid mb-4">
+                <!-- Ячейки матрицы генерируются JS -->
+            </div>
+        </div>
+
+        <!-- TRAINER: Режим тренировки -->
+        <div id="view-trainer" class="w-full flex flex-col items-center">
+            <!-- Стол -->
+            <div class="poker-table" id="table-visual">
+                <div class="pos-node" style="top: -22px; left: 123px;" data-p="UTG"><span>UTG</span><span class="pos-action-badge"></span></div>
+                <div class="pos-node" style="top: 20px; right: -22px;" data-p="MP"><span>MP</span><span class="pos-action-badge"></span></div>
+                <div class="pos-node" style="bottom: 20px; right: -22px;" data-p="CO"><span>CO</span><span class="pos-action-badge"></span></div>
+                <div class="pos-node" style="bottom: -22px; left: 123px;" data-p="BTN"><span>BTN</span><span class="pos-action-badge"></span></div>
+                <div class="pos-node" style="bottom: 20px; left: -22px;" data-p="SB"><span>SB</span><span class="pos-action-badge"></span></div>
+                <div class="pos-node" style="top: 20px; left: -22px;" data-p="BB"><span>BB</span><span class="pos-action-badge"></span></div>
+            </div>
+
+            <!-- Карты -->
+            <div id="cards-spot" class="flex gap-3 mb-5 h-[105px]">
+                <!-- Карты генерируются скриптом -->
+            </div>
+            
+            <!-- Обратная связь -->
+            <div id="feedback" class="h-14 flex flex-col items-center justify-center text-center w-full mb-3 text-xs sm:text-sm font-bold bg-[#0d1117] border border-[#30363d] rounded-lg p-1.5">
+                <span class="text-gray-500 font-normal">Выберите действие</span>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="grid grid-cols-3 gap-2.5 w-full mb-3">
+                <button onclick="handleAct('fold')" class="btn-action p-3.5 rounded-lg font-bold bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-sm">FOLD</button>
+                <button onclick="handleAct('call')" class="btn-action p-3.5 rounded-lg font-bold bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-600 hover:text-white hover:border-yellow-600 text-sm">CALL</button>
+                <button onclick="handleAct('raise')" class="btn-action p-3.5 rounded-lg font-bold bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white hover:border-red-600 text-sm">RAISE</button>
+            </div>
+
+            <!-- Кнопка Next -->
+            <button id="next-btn" onclick="deal()" class="w-full py-3.5 bg-white text-black rounded-lg font-extrabold uppercase tracking-widest hidden hover:bg-gray-200 transition text-sm">
+                Следующая раздача
+            </button>
+        </div>
     </div>
 
 <script>
     const RANKS = "AKQJT98765432".split("");
+    const RANK_VALUES = { 'A':14, 'K':13, 'Q':12, 'J':11, 'T':10, '9':9, '8':8, '7':7, '6':6, '5':5, '4':4, '3':3, '2':2 };
     const POSITIONS = ["UTG", "MP", "CO", "BTN", "SB", "BB"];
-    const COLORS = { raise:'#f38ba8', call:'#a6e3a1', check:'#f9e2af', fold:'#89b4fa' };
     
     let rangeData = {}; 
-    let selAction = 'raise';
-    let isDrawing = false;
     let currentHand = null;
+    let currentView = 'trainer';
+    let currentOpponent = null; // Позиция оппонента (кто открылся или кто 3-бетнул)
+
+    // База данных стандартных диапазонов из PDF «Open Raise (RFI)»
+    const PREDEFINED_RANGES = {
+        "RFI_UTG": {
+  "22": "Fold",
+  "33": "Fold",
+  "44": "Fold",
+  "55": "Raise",
+  "66": "Raise",
+  "77": "Raise",
+  "88": "Raise",
+  "99": "Raise",
+  "AA": "Raise",
+  "AKs": "Raise",
+  "AQs": "Raise",
+  "AJs": "Raise",
+  "ATs": "Raise",
+  "A9s": "Raise",
+  "A8s": "Raise",
+  "A7s": "Raise",
+  "A6s": "Raise",
+  "A5s": "Raise",
+  "A4s": "Raise",
+  "A3s": "Raise",
+  "A2s": "Raise",
+  "AKo": "Raise",
+  "KK": "Raise",
+  "KQs": "Raise",
+  "KJs": "Raise",
+  "KTs": "Raise",
+  "K9s": "Fold",
+  "K8s": "Fold",
+  "K7s": "Fold",
+  "K6s": "Fold",
+  "K5s": "Fold",
+  "K4s": "Fold",
+  "K3s": "Fold",
+  "K2s": "Fold",
+  "AQo": "Raise",
+  "KQo": "Raise",
+  "QQ": "Raise",
+  "QJs": "Raise",
+  "QTs": "Raise",
+  "Q9s": "Fold",
+  "Q8s": "Fold",
+  "Q7s": "Fold",
+  "Q6s": "Fold",
+  "Q5s": "Fold",
+  "Q4s": "Fold",
+  "Q3s": "Fold",
+  "Q2s": "Fold",
+  "AJo": "Raise",
+  "KJo": "Fold",
+  "QJo": "Fold",
+  "JJ": "Raise",
+  "JTs": "Raise",
+  "J9s": "Fold",
+  "J8s": "Fold",
+  "J7s": "Fold",
+  "J6s": "Fold",
+  "J5s": "Fold",
+  "J4s": "Fold",
+  "J3s": "Fold",
+  "J2s": "Fold",
+  "ATo": "Fold",
+  "KTo": "Fold",
+  "QTo": "Fold",
+  "JTo": "Fold",
+  "TT": "Raise",
+  "T9s": "Raise",
+  "T8s": "Fold",
+  "T7s": "Fold",
+  "T6s": "Fold",
+  "T5s": "Fold",
+  "T4s": "Fold",
+  "T3s": "Fold",
+  "T2s": "Fold",
+  "A9o": "Fold",
+  "K9o": "Fold",
+  "Q9o": "Fold",
+  "J9o": "Fold",
+  "T9o": "Fold",
+  "98s": "Raise",
+  "97s": "Fold",
+  "96s": "Fold",
+  "95s": "Fold",
+  "94s": "Fold",
+  "93s": "Fold",
+  "92s": "Fold",
+  "A8o": "Fold",
+  "K8o": "Fold",
+  "Q8o": "Fold",
+  "J8o": "Fold",
+  "T8o": "Fold",
+  "98o": "Fold",
+  "87s": "Raise",
+  "86s": "Fold",
+  "85s": "Fold",
+  "84s": "Fold",
+  "83s": "Fold",
+  "82s": "Fold",
+  "A7o": "Fold",
+  "K7o": "Fold",
+  "Q7o": "Fold",
+  "J7o": "Fold",
+  "T7o": "Fold",
+  "97o": "Fold",
+  "87o": "Fold",
+  "76s": "Raise",
+  "75s": "Fold",
+  "74s": "Fold",
+  "73s": "Fold",
+  "72s": "Fold",
+  "A6o": "Fold",
+  "K6o": "Fold",
+  "Q6o": "Fold",
+  "J6o": "Fold",
+  "T6o": "Fold",
+  "96o": "Fold",
+  "86o": "Fold",
+  "76o": "Fold",
+  "65s": "Raise",
+  "64s": "Fold",
+  "63s": "Fold",
+  "62s": "Fold",
+  "A5o": "Fold",
+  "K5o": "Fold",
+  "Q5o": "Fold",
+  "J5o": "Fold",
+  "T5o": "Fold",
+  "95o": "Fold",
+  "85o": "Fold",
+  "75o": "Fold",
+  "65o": "Fold",
+  "54s": "Fold",
+  "53s": "Fold",
+  "52s": "Fold",
+  "A4o": "Fold",
+  "K4o": "Fold",
+  "Q4o": "Fold",
+  "J4o": "Fold",
+  "T4o": "Fold",
+  "94o": "Fold",
+  "84o": "Fold",
+  "74o": "Fold",
+  "64o": "Fold",
+  "54o": "Fold",
+  "43s": "Fold",
+  "42s": "Fold",
+  "A3o": "Fold",
+  "K3o": "Fold",
+  "Q3o": "Fold",
+  "J3o": "Fold",
+  "T3o": "Fold",
+  "93o": "Fold",
+  "83o": "Fold",
+  "73o": "Fold",
+  "63o": "Fold",
+  "53o": "Fold",
+  "43o": "Fold",
+  "32s": "Fold",
+  "A2o": "Fold",
+  "K2o": "Fold",
+  "Q2o": "Fold",
+  "J2o": "Fold",
+  "T2o": "Fold",
+  "92o": "Fold",
+  "82o": "Fold",
+  "72o": "Fold",
+  "62o": "Fold",
+  "52o": "Fold",
+  "42o": "Fold",
+  "32o": "Fold"
+},
+        "RFI_MP": {
+  "22": "Fold",
+  "33": "Fold",
+  "44": "Fold",
+  "55": "Raise",
+  "66": "Raise",
+  "77": "Raise",
+  "88": "Raise",
+  "99": "Raise",
+  "AA": "Raise",
+  "AKs": "Raise",
+  "AQs": "Raise",
+  "AJs": "Raise",
+  "ATs": "Raise",
+  "A9s": "Raise",
+  "A8s": "Raise",
+  "A7s": "Raise",
+  "A6s": "Raise",
+  "A5s": "Raise",
+  "A4s": "Raise",
+  "A3s": "Raise",
+  "A2s": "Raise",
+  "AKo": "Raise",
+  "KK": "Raise",
+  "KQs": "Raise",
+  "KJs": "Raise",
+  "KTs": "Raise",
+  "K9s": "Raise",
+  "K8s": "Fold",
+  "K7s": "Fold",
+  "K6s": "Fold",
+  "K5s": "Fold",
+  "K4s": "Fold",
+  "K3s": "Fold",
+  "K2s": "Fold",
+  "AQo": "Raise",
+  "KQo": "Raise",
+  "QQ": "Raise",
+  "QJs": "Raise",
+  "QTs": "Raise",
+  "Q9s": "Raise",
+  "Q8s": "Fold",
+  "Q7s": "Fold",
+  "Q6s": "Fold",
+  "Q5s": "Fold",
+  "Q4s": "Fold",
+  "Q3s": "Fold",
+  "Q2s": "Fold",
+  "AJo": "Raise",
+  "KJo": "Raise",
+  "QJo": "Fold",
+  "JJ": "Raise",
+  "JTs": "Raise",
+  "J9s": "Raise",
+  "J8s": "Fold",
+  "J7s": "Fold",
+  "J6s": "Fold",
+  "J5s": "Fold",
+  "J4s": "Fold",
+  "J3s": "Fold",
+  "J2s": "Fold",
+  "ATo": "Raise",
+  "KTo": "Fold",
+  "QTo": "Fold",
+  "JTo": "Fold",
+  "TT": "Raise",
+  "T9s": "Raise",
+  "T8s": "Fold",
+  "T7s": "Fold",
+  "T6s": "Fold",
+  "T5s": "Fold",
+  "T4s": "Fold",
+  "T3s": "Fold",
+  "T2s": "Fold",
+  "A9o": "Fold",
+  "K9o": "Fold",
+  "Q9o": "Fold",
+  "J9o": "Fold",
+  "T9o": "Fold",
+  "98s": "Raise",
+  "97s": "Fold",
+  "96s": "Fold",
+  "95s": "Fold",
+  "94s": "Fold",
+  "93s": "Fold",
+  "92s": "Fold",
+  "A8o": "Fold",
+  "K8o": "Fold",
+  "Q8o": "Fold",
+  "J8o": "Fold",
+  "T8o": "Fold",
+  "98o": "Fold",
+  "87s": "Raise",
+  "86s": "Fold",
+  "85s": "Fold",
+  "84s": "Fold",
+  "83s": "Fold",
+  "82s": "Fold",
+  "A7o": "Fold",
+  "K7o": "Fold",
+  "Q7o": "Fold",
+  "J7o": "Fold",
+  "T7o": "Fold",
+  "97o": "Fold",
+  "87o": "Fold",
+  "76s": "Raise",
+  "75s": "Fold",
+  "74s": "Fold",
+  "73s": "Fold",
+  "72s": "Fold",
+  "A6o": "Fold",
+  "K6o": "Fold",
+  "Q6o": "Fold",
+  "J6o": "Fold",
+  "T6o": "Fold",
+  "96o": "Fold",
+  "86o": "Fold",
+  "76o": "Fold",
+  "65s": "Raise",
+  "64s": "Fold",
+  "63s": "Fold",
+  "62s": "Fold",
+  "A5o": "Fold",
+  "K5o": "Fold",
+  "Q5o": "Fold",
+  "J5o": "Fold",
+  "T5o": "Fold",
+  "95o": "Fold",
+  "85o": "Fold",
+  "75o": "Fold",
+  "65o": "Fold",
+  "54s": "Fold",
+  "53s": "Fold",
+  "52s": "Fold",
+  "A4o": "Fold",
+  "K4o": "Fold",
+  "Q4o": "Fold",
+  "J4o": "Fold",
+  "T4o": "Fold",
+  "94o": "Fold",
+  "84o": "Fold",
+  "74o": "Fold",
+  "64o": "Fold",
+  "54o": "Fold",
+  "43s": "Fold",
+  "42s": "Fold",
+  "A3o": "Fold",
+  "K3o": "Fold",
+  "Q3o": "Fold",
+  "J3o": "Fold",
+  "T3o": "Fold",
+  "93o": "Fold",
+  "83o": "Fold",
+  "73o": "Fold",
+  "63o": "Fold",
+  "53o": "Fold",
+  "43o": "Fold",
+  "32s": "Fold",
+  "A2o": "Fold",
+  "K2o": "Fold",
+  "Q2o": "Fold",
+  "J2o": "Fold",
+  "T2o": "Fold",
+  "92o": "Fold",
+  "82o": "Fold",
+  "72o": "Fold",
+  "62o": "Fold",
+  "52o": "Fold",
+  "42o": "Fold",
+  "32o": "Fold"
+},
+        "RFI_CO": {
+            {
+  "22": "Raise",
+  "33": "Raise",
+  "44": "Raise",
+  "55": "Raise",
+  "66": "Raise",
+  "77": "Raise",
+  "88": "Raise",
+  "99": "Raise",
+  "AA": "Raise",
+  "AKs": "Raise",
+  "AQs": "Raise",
+  "AJs": "Raise",
+  "ATs": "Raise",
+  "A9s": "Raise",
+  "A8s": "Raise",
+  "A7s": "Raise",
+  "A6s": "Raise",
+  "A5s": "Raise",
+  "A4s": "Raise",
+  "A3s": "Raise",
+  "A2s": "Raise",
+  "AKo": "Raise",
+  "KK": "Raise",
+  "KQs": "Raise",
+  "KJs": "Raise",
+  "KTs": "Raise",
+  "K9s": "Raise",
+  "K8s": "Raise",
+  "K7s": "Raise",
+  "K6s": "Raise",
+  "K5s": "Raise",
+  "K4s": "Raise",
+  "K3s": "Fold",
+  "K2s": "Fold",
+  "AQo": "Raise",
+  "KQo": "Raise",
+  "QQ": "Raise",
+  "QJs": "Raise",
+  "QTs": "Raise",
+  "Q9s": "Raise",
+  "Q8s": "Raise",
+  "Q7s": "Raise",
+  "Q6s": "Fold",
+  "Q5s": "Fold",
+  "Q4s": "Fold",
+  "Q3s": "Fold",
+  "Q2s": "Fold",
+  "AJo": "Raise",
+  "KJo": "Raise",
+  "QJo": "Raise",
+  "JJ": "Raise",
+  "JTs": "Raise",
+  "J9s": "Raise",
+  "J8s": "Raise",
+  "J7s": "Raise",
+  "J6s": "Fold",
+  "J5s": "Fold",
+  "J4s": "Fold",
+  "J3s": "Fold",
+  "J2s": "Fold",
+  "ATo": "Raise",
+  "KTo": "Raise",
+  "QTo": "Raise",
+  "JTo": "Raise",
+  "TT": "Raise",
+  "T9s": "Raise",
+  "T8s": "Raise",
+  "T7s": "Raise",
+  "T6s": "Fold",
+  "T5s": "Fold",
+  "T4s": "Fold",
+  "T3s": "Fold",
+  "T2s": "Fold",
+  "A9o": "Raise",
+  "K9o": "Fold",
+  "Q9o": "Fold",
+  "J9o": "Fold",
+  "T9o": "Fold",
+  "98s": "Raise",
+  "97s": "Raise",
+  "96s": "Fold",
+  "95s": "Fold",
+  "94s": "Fold",
+  "93s": "Fold",
+  "92s": "Fold",
+  "A8o": "Fold",
+  "K8o": "Fold",
+  "Q8o": "Fold",
+  "J8o": "Fold",
+  "T8o": "Fold",
+  "98o": "Fold",
+  "87s": "Raise",
+  "86s": "Raise",
+  "85s": "Fold",
+  "84s": "Fold",
+  "83s": "Fold",
+  "82s": "Fold",
+  "A7o": "Fold",
+  "K7o": "Fold",
+  "Q7o": "Fold",
+  "J7o": "Fold",
+  "T7o": "Fold",
+  "97o": "Fold",
+  "87o": "Fold",
+  "76s": "Raise",
+  "75s": "Raise",
+  "74s": "Fold",
+  "73s": "Fold",
+  "72s": "Fold",
+  "A6o": "Fold",
+  "K6o": "Fold",
+  "Q6o": "Fold",
+  "J6o": "Fold",
+  "T6o": "Fold",
+  "96o": "Fold",
+  "86o": "Fold",
+  "76o": "Fold",
+  "65s": "Raise",
+  "64s": "Raise",
+  "63s": "Fold",
+  "62s": "Fold",
+  "A5o": "Fold",
+  "K5o": "Fold",
+  "Q5o": "Fold",
+  "J5o": "Fold",
+  "T5o": "Fold",
+  "95o": "Fold",
+  "85o": "Fold",
+  "75o": "Fold",
+  "65o": "Fold",
+  "54s": "Raise",
+  "53s": "Fold",
+  "52s": "Fold",
+  "A4o": "Fold",
+  "K4o": "Fold",
+  "Q4o": "Fold",
+  "J4o": "Fold",
+  "T4o": "Fold",
+  "94o": "Fold",
+  "84o": "Fold",
+  "74o": "Fold",
+  "64o": "Fold",
+  "54o": "Fold",
+  "43s": "Fold",
+  "42s": "Fold",
+  "A3o": "Fold",
+  "K3o": "Fold",
+  "Q3o": "Fold",
+  "J3o": "Fold",
+  "T3o": "Fold",
+  "93o": "Fold",
+  "83o": "Fold",
+  "73o": "Fold",
+  "63o": "Fold",
+  "53o": "Fold",
+  "43o": "Fold",
+  "32s": "Fold",
+  "A2o": "Fold",
+  "K2o": "Fold",
+  "Q2o": "Fold",
+  "J2o": "Fold",
+  "T2o": "Fold",
+  "92o": "Fold",
+  "82o": "Fold",
+  "72o": "Fold",
+  "62o": "Fold",
+  "52o": "Fold",
+  "42o": "Fold",
+  "32o": "Fold"
+},
+        "RFI_BTN": {
+  "22": "Raise",
+  "33": "Raise",
+  "44": "Raise",
+  "55": "Raise",
+  "66": "Raise",
+  "77": "Raise",
+  "88": "Raise",
+  "99": "Raise",
+  "AA": "Raise",
+  "AKs": "Raise",
+  "AQs": "Raise",
+  "AJs": "Raise",
+  "ATs": "Raise",
+  "A9s": "Raise",
+  "A8s": "Raise",
+  "A7s": "Raise",
+  "A6s": "Raise",
+  "A5s": "Raise",
+  "A4s": "Raise",
+  "A3s": "Raise",
+  "A2s": "Raise",
+  "AKo": "Raise",
+  "KK": "Raise",
+  "KQs": "Raise",
+  "KJs": "Raise",
+  "KTs": "Raise",
+  "K9s": "Raise",
+  "K8s": "Raise",
+  "K7s": "Raise",
+  "K6s": "Raise",
+  "K5s": "Raise",
+  "K4s": "Raise",
+  "K3s": "Raise",
+  "K2s": "Raise",
+  "AQo": "Raise",
+  "KQo": "Raise",
+  "QQ": "Raise",
+  "QJs": "Raise",
+  "QTs": "Raise",
+  "Q9s": "Raise",
+  "Q8s": "Raise",
+  "Q7s": "Raise",
+  "Q6s": "Raise",
+  "Q5s": "Raise",
+  "Q4s": "Raise",
+  "Q3s": "Raise",
+  "Q2s": "Raise",
+  "AJo": "Raise",
+  "KJo": "Raise",
+  "QJo": "Raise",
+  "JJ": "Raise",
+  "JTs": "Raise",
+  "J9s": "Raise",
+  "J8s": "Raise",
+  "J7s": "Raise",
+  "J6s": "Raise",
+  "J5s": "Raise",
+  "J4s": "Raise",
+  "J3s": "Raise",
+  "J2s": "Raise",
+  "ATo": "Raise",
+  "KTo": "Raise",
+  "QTo": "Raise",
+  "JTo": "Raise",
+  "TT": "Raise",
+  "T9s": "Raise",
+  "T8s": "Raise",
+  "T7s": "Raise",
+  "T6s": "Fold",
+  "T5s": "Fold",
+  "T4s": "Fold",
+  "T3s": "Fold",
+  "T2s": "Fold",
+  "A9o": "Raise",
+  "K9o": "Raise",
+  "Q9o": "Raise",
+  "J9o": "Raise",
+  "T9o": "Raise",
+  "98s": "Raise",
+  "97s": "Raise",
+  "96s": "Raise",
+  "95s": "Fold",
+  "94s": "Fold",
+  "93s": "Fold",
+  "92s": "Fold",
+  "A8o": "Raise",
+  "K8o": "Raise",
+  "Q8o": "Raise",
+  "J8o": "Fold",
+  "T8o": "Fold",
+  "98o": "Fold",
+  "87s": "Raise",
+  "86s": "Raise",
+  "85s": "Raise",
+  "84s": "Fold",
+  "83s": "Fold",
+  "82s": "Fold",
+  "A7o": "Raise",
+  "K7o": "Fold",
+  "Q7o": "Fold",
+  "J7o": "Fold",
+  "T7o": "Fold",
+  "97o": "Fold",
+  "87o": "Fold",
+  "76s": "Raise",
+  "75s": "Raise",
+  "74s": "Raise",
+  "73s": "Fold",
+  "72s": "Fold",
+  "A6o": "Raise",
+  "K6o": "Fold",
+  "Q6o": "Fold",
+  "J6o": "Fold",
+  "T6o": "Fold",
+  "96o": "Fold",
+  "86o": "Fold",
+  "76o": "Fold",
+  "65s": "Raise",
+  "64s": "Raise",
+  "63s": "Raise",
+  "62s": "Fold",
+  "A5o": "Raise",
+  "K5o": "Fold",
+  "Q5o": "Fold",
+  "J5o": "Fold",
+  "T5o": "Fold",
+  "95o": "Fold",
+  "85o": "Fold",
+  "75o": "Fold",
+  "65o": "Fold",
+  "54s": "Raise",
+  "53s": "Raise",
+  "52s": "Fold",
+  "A4o": "Raise",
+  "K4o": "Fold",
+  "Q4o": "Fold",
+  "J4o": "Fold",
+  "T4o": "Fold",
+  "94o": "Fold",
+  "84o": "Fold",
+  "74o": "Fold",
+  "64o": "Fold",
+  "54o": "Fold",
+  "43s": "Raise",
+  "42s": "Fold",
+  "A3o": "Raise",
+  "K3o": "Fold",
+  "Q3o": "Fold",
+  "J3o": "Fold",
+  "T3o": "Fold",
+  "93o": "Fold",
+  "83o": "Fold",
+  "73o": "Fold",
+  "63o": "Fold",
+  "53o": "Fold",
+  "43o": "Fold",
+  "32s": "Fold",
+  "A2o": "Raise",
+  "K2o": "Fold",
+  "Q2o": "Fold",
+  "J2o": "Fold",
+  "T2o": "Fold",
+  "92o": "Fold",
+  "82o": "Fold",
+  "72o": "Fold",
+  "62o": "Fold",
+  "52o": "Fold",
+  "42o": "Fold",
+  "32o": "Fold"
+},
+        "RFI_SB": {
+  "22": "Raise",
+  "33": "Raise",
+  "44": "Raise",
+  "55": "Raise",
+  "66": "Raise",
+  "77": "Raise",
+  "88": "Raise",
+  "99": "Raise",
+  "AA": "Raise",
+  "AKs": "Raise",
+  "AQs": "Raise",
+  "AJs": "Raise",
+  "ATs": "Raise",
+  "A9s": "Raise",
+  "A8s": "Raise",
+  "A7s": "Raise",
+  "A6s": "Raise",
+  "A5s": "Raise",
+  "A4s": "Raise",
+  "A3s": "Raise",
+  "A2s": "Raise",
+  "AKo": "Raise",
+  "KK": "Raise",
+  "KQs": "Raise",
+  "KJs": "Raise",
+  "KTs": "Raise",
+  "K9s": "Raise",
+  "K8s": "Raise",
+  "K7s": "Raise",
+  "K6s": "Raise",
+  "K5s": "Raise",
+  "K4s": "Raise",
+  "K3s": "Raise",
+  "K2s": "Raise",
+  "AQo": "Raise",
+  "KQo": "Raise",
+  "QQ": "Raise",
+  "QJs": "Raise",
+  "QTs": "Raise",
+  "Q9s": "Raise",
+  "Q8s": "Raise",
+  "Q7s": "Raise",
+  "Q6s": "Raise",
+  "Q5s": "Raise",
+  "Q4s": "Raise",
+  "Q3s": "Raise",
+  "Q2s": "Raise",
+  "AJo": "Raise",
+  "KJo": "Raise",
+  "QJo": "Raise",
+  "JJ": "Raise",
+  "JTs": "Raise",
+  "J9s": "Raise",
+  "J8s": "Raise",
+  "J7s": "Raise",
+  "J6s": "Raise",
+  "J5s": "Raise",
+  "J4s": "Raise",
+  "J3s": "Fold",
+  "J2s": "Fold",
+  "ATo": "Raise",
+  "KTo": "Raise",
+  "QTo": "Raise",
+  "JTo": "Raise",
+  "TT": "Raise",
+  "T9s": "Raise",
+  "T8s": "Raise",
+  "T7s": "Raise",
+  "T6s": "Raise",
+  "T5s": "Fold",
+  "T4s": "Fold",
+  "T3s": "Fold",
+  "T2s": "Fold",
+  "A9o": "Raise",
+  "K9o": "Raise",
+  "Q9o": "Raise",
+  "J9o": "Raise",
+  "T9o": "Raise",
+  "98s": "Raise",
+  "97s": "Raise",
+  "96s": "Raise",
+  "95s": "Fold",
+  "94s": "Fold",
+  "93s": "Fold",
+  "92s": "Fold",
+  "A8o": "Raise",
+  "K8o": "Raise",
+  "Q8o": "Raise",
+  "J8o": "Raise",
+  "T8o": "Raise",
+  "98o": "Raise",
+  "87s": "Raise",
+  "86s": "Raise",
+  "85s": "Raise",
+  "84s": "Fold",
+  "83s": "Fold",
+  "82s": "Fold",
+  "A7o": "Raise",
+  "K7o": "Fold",
+  "Q7o": "Fold",
+  "J7o": "Fold",
+  "T7o": "Fold",
+  "97o": "Fold",
+  "87o": "Fold",
+  "76s": "Raise",
+  "75s": "Raise",
+  "74s": "Raise",
+  "73s": "Fold",
+  "72s": "Fold",
+  "A6o": "Raise",
+  "K6o": "Fold",
+  "Q6o": "Fold",
+  "J6o": "Fold",
+  "T6o": "Fold",
+  "96o": "Fold",
+  "86o": "Fold",
+  "76o": "Fold",
+  "65s": "Raise",
+  "64s": "Raise",
+  "63s": "Fold",
+  "62s": "Fold",
+  "A5o": "Raise",
+  "K5o": "Fold",
+  "Q5o": "Fold",
+  "J5o": "Fold",
+  "T5o": "Fold",
+  "95o": "Fold",
+  "85o": "Fold",
+  "75o": "Fold",
+  "65o": "Fold",
+  "54s": "Raise",
+  "53s": "Raise",
+  "52s": "Fold",
+  "A4o": "Raise",
+  "K4o": "Fold",
+  "Q4o": "Fold",
+  "J4o": "Fold",
+  "T4o": "Fold",
+  "94o": "Fold",
+  "84o": "Fold",
+  "74o": "Fold",
+  "64o": "Fold",
+  "54o": "Fold",
+  "43s": "Raise",
+  "42s": "Fold",
+  "A3o": "Raise",
+  "K3o": "Fold",
+  "Q3o": "Fold",
+  "J3o": "Fold",
+  "T3o": "Fold",
+  "93o": "Fold",
+  "83o": "Fold",
+  "73o": "Fold",
+  "63o": "Fold",
+  "53o": "Fold",
+  "43o": "Fold",
+  "32s": "Fold",
+  "A2o": "Raise",
+  "K2o": "Fold",
+  "Q2o": "Fold",
+  "J2o": "Fold",
+  "T2o": "Fold",
+  "92o": "Fold",
+  "82o": "Fold",
+  "72o": "Fold",
+  "62o": "Fold",
+  "52o": "Fold",
+  "42o": "Fold",
+  "32o": "Fold"
+}
+    };
+
+    // Умный генератор диапазонов с учетом позиционного фактора (Hero vs Opponent)
+    function generateMockRange(mode, hero, opponent) {
+        const newRange = {};
+        
+        // Базовые пороги силы рук для позиций Hero
+        let heroBase = 40; 
+        if (hero === 'UTG') heroBase = 48;
+        if (hero === 'MP') heroBase = 45;
+        if (hero === 'CO') heroBase = 38;
+        if (hero === 'BTN') heroBase = 30;
+        if (hero === 'SB') heroBase = 34;
+        if (hero === 'BB') heroBase = 36;
+
+        // Позиционный сдвиг от силы оппонента (против кого играем)
+        let oppFactor = 0;
+        if (opponent) {
+            const oppIdx = POSITIONS.indexOf(opponent);
+            if (opponent === 'UTG') oppFactor = 10;
+            else if (opponent === 'MP') oppFactor = 7;
+            else if (opponent === 'CO') oppFactor = 4;
+            else if (opponent === 'BTN') oppFactor = 0;
+            else if (opponent === 'SB') oppFactor = -2;
+        }
+
+        RANKS.forEach((r1, i) => {
+            RANKS.forEach((r2, j) => {
+                const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
+                const val1 = RANK_VALUES[r1];
+                const val2 = RANK_VALUES[r2];
+                const high = Math.max(val1, val2);
+                const low = Math.min(val1, val2);
+                const isPair = high === low;
+                const isSuited = i < j;
+                
+                let score = (high * 2) + low + (isSuited ? 6 : 0) + (isPair ? 18 : 0);
+
+                if (mode === 'RFI') {
+                    if (score >= heroBase) newRange[combo] = { a: 'raise', f: 100 };
+                    else newRange[combo] = { a: 'fold', f: 100 };
+                } else if (mode === 'vsOpen') {
+                    const callThreshold = heroBase + oppFactor - 2;
+                    const raise3betThreshold = heroBase + oppFactor + 8;
+
+                    if (score >= raise3betThreshold) newRange[combo] = { a: 'raise', f: 100 }; 
+                    else if (score >= callThreshold) newRange[combo] = { a: 'call', f: 100 }; 
+                    else newRange[combo] = { a: 'fold', f: 100 };
+                } else if (mode === 'vs3bet') {
+                    const defenseCall = heroBase + oppFactor + 5;
+                    const defense4bet = heroBase + oppFactor + 14;
+
+                    if (score >= defense4bet) newRange[combo] = { a: 'raise', f: 100 }; 
+                    else if (score >= defenseCall) newRange[combo] = { a: 'call', f: 100 }; 
+                    else newRange[combo] = { a: 'fold', f: 100 };
+                }
+            });
+        });
+        return newRange;
+    }
+
+    // Получить активный диапазон с поддержкой оппонента
+    function getActiveRange(mode, hero, opponent) {
+        const key = `${mode}_${hero}`;
+        const statusEl = document.getElementById('range-status');
+        
+        // Для RFI у нас есть точные стандартные PDF диапазоны
+        if (mode === 'RFI' && PREDEFINED_RANGES[key]) {
+            if(statusEl) {
+                statusEl.innerText = `Диапазон RFI ${hero}`;
+                statusEl.className = "text-[9px] font-mono px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded border border-green-500/30";
+            }
+            
+            const converted = {};
+            for (const [combo, action] of Object.entries(PREDEFINED_RANGES[key])) {
+                converted[combo] = { a: action.toLowerCase(), f: 100 };
+            }
+            return converted;
+        }
+
+        // Динамический диапазон под конкретную оппозицию позиций
+        if(statusEl) {
+            statusEl.innerText = opponent 
+                ? `GTO ${hero} vs ${opponent}` 
+                : `GTO диапазон ${hero}`;
+            statusEl.className = "text-[9px] font-mono px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded border border-blue-500/30";
+        }
+        return generateMockRange(mode, hero, opponent);
+    }
+
+    function switchView(view) {
+        currentView = view;
+        const btnT = document.getElementById('tab-trainer');
+        const btnV = document.getElementById('tab-viewer');
+        const viewT = document.getElementById('view-trainer');
+        const viewV = document.getElementById('view-viewer');
+
+        if (view === 'trainer') {
+            btnT.className = 'tab-btn tab-active flex-1 py-2 rounded text-xs sm:text-sm font-bold uppercase tracking-wider border';
+            btnV.className = 'tab-btn tab-inactive flex-1 py-2 rounded text-xs sm:text-sm font-bold uppercase tracking-wider border';
+            viewT.classList.remove('hidden');
+            viewV.classList.add('hidden');
+            document.getElementById('viewer-villain-selector').classList.add('hidden');
+        } else {
+            btnV.className = 'tab-btn tab-active flex-1 py-2 rounded text-xs sm:text-sm font-bold uppercase tracking-wider border';
+            btnT.className = 'tab-btn tab-inactive flex-1 py-2 rounded text-xs sm:text-sm font-bold uppercase tracking-wider border';
+            viewV.classList.remove('hidden');
+            viewT.classList.add('hidden');
+            
+            const m = document.getElementById('mode').value;
+            if (m !== 'RFI') {
+                document.getElementById('viewer-villain-selector').classList.remove('hidden');
+                updateViewerVillains();
+            } else {
+                document.getElementById('viewer-villain-selector').classList.add('hidden');
+            }
+            renderMatrix();
+        }
+    }
+
+    // Обновление списка возможных оппонентов во вкладке Диапазоны
+    function updateViewerVillains() {
+        const m = document.getElementById('mode').value;
+        const hero = document.getElementById('hero').value;
+        const hIdx = POSITIONS.indexOf(hero);
+        const select = document.getElementById('viewer-villain');
+        select.innerHTML = '';
+
+        let targets = [];
+        if (m === 'vsOpen') {
+            targets = POSITIONS.slice(0, hIdx);
+        } else if (m === 'vs3bet') {
+            targets = POSITIONS.slice(hIdx + 1);
+            if (targets.length === 0) targets = ['BTN']; 
+        }
+
+        targets.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.innerText = t;
+            select.appendChild(opt);
+        });
+
+        if (targets.length > 0) {
+            currentOpponent = targets[0];
+        }
+    }
+
+    function renderMatrix() {
+        const mode = document.getElementById('mode').value;
+        const heroPos = document.getElementById('hero').value;
+        
+        let opponent = null;
+        if (mode !== 'RFI') {
+            const select = document.getElementById('viewer-villain');
+            opponent = select.value || currentOpponent;
+        }
+
+        rangeData = getActiveRange(mode, heroPos, opponent);
+        const container = document.getElementById('matrix-container');
+        container.innerHTML = '';
+
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                const r1 = RANKS[i];
+                const r2 = RANKS[j];
+                const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
+                
+                const cellData = rangeData[combo] || { a: 'fold' };
+                const action = cellData.a;
+                
+                let cellClass = 'cell cell-fold';
+                if (action === 'raise') cellClass = 'cell cell-raise';
+                else if (action === 'call') cellClass = 'cell cell-call';
+
+                const cellDiv = document.createElement('div');
+                cellDiv.className = cellClass;
+                cellDiv.innerText = combo;
+                container.appendChild(cellDiv);
+            }
+        }
+    }
 
     function syncUI() {
         const m = document.getElementById('mode').value;
         const h = document.getElementById('hero');
-        // Логика ограничений
+        
         if (m === 'RFI' && h.value === 'BB') h.value = 'SB';
+        if (m === 'vsOpen' && h.value === 'UTG') h.value = 'MP';
+
         const bbOpt = h.querySelector('option[value="BB"]');
-        if (m === 'RFI') h.options[5].disabled = true; else h.options[5].disabled = false;
-    }
+        bbOpt.disabled = (m === 'RFI');
 
-    function init() {
-        const mx = document.getElementById('matrix');
-        RANKS.forEach((r1, i) => {
-            RANKS.forEach((r2, j) => {
-                const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.hand = combo;
-                cell.innerHTML = `<div class="cell-fill" style="height:100%; background:${COLORS.fold}"></div><div class="cell-text">${combo}</div>`;
-                cell.onmousedown = (e) => { e.preventDefault(); isDrawing=true; paint(cell); };
-                cell.onmouseover = () => { if(isDrawing) paint(cell); };
-                mx.appendChild(cell);
-            });
-        });
-        window.onmouseup = () => isDrawing = false;
-        document.querySelectorAll('.dot').forEach(d => d.onclick = () => {
-            selAction = d.dataset.a;
-            document.querySelectorAll('.dot').forEach(x=>x.style.boxShadow='none');
-            d.style.boxShadow = '0 0 0 2px white';
-        });
-        document.querySelector('[data-a="raise"]').click();
-        document.getElementById('freq').oninput = (e) => document.getElementById('freq-txt').innerText = e.target.value + '%';
-    }
+        const utgOpt = h.querySelector('option[value="UTG"]');
+        utgOpt.disabled = (m === 'vsOpen');
 
-    function paint(cell) {
-        const h = cell.dataset.hand;
-        const f = parseInt(document.getElementById('freq').value);
-        if (f === 0) delete rangeData[h];
-        else rangeData[h] = { a: selAction, f: f };
-        renderMatrix();
-    }
-
-    function renderMatrix() {
-        document.querySelectorAll('.cell').forEach(c => {
-            const data = rangeData[c.dataset.hand];
-            const fill = c.querySelector('.cell-fill');
-            if (data) {
-                fill.style.height = '100%';
-                fill.style.background = `linear-gradient(to top, ${COLORS[data.a]} ${data.f}%, ${COLORS.fold} ${data.f}%)`;
+        if (currentView === 'trainer') {
+            deal();
+        } else {
+            const villainSelector = document.getElementById('viewer-villain-selector');
+            if (m !== 'RFI') {
+                villainSelector.classList.remove('hidden');
+                updateViewerVillains();
             } else {
-                fill.style.background = COLORS.fold;
+                villainSelector.classList.add('hidden');
             }
-        });
+            renderMatrix();
+        }
     }
 
-    function setTab(t) {
-        document.getElementById('view-ed').classList.toggle('hidden', t!=='ed');
-        document.getElementById('view-tr').classList.toggle('hidden', t!=='tr');
-        document.getElementById('tab-ed').className = t==='ed' ? 'active-tab pb-1' : 'opacity-50 pb-1';
-        document.getElementById('tab-tr').className = t==='tr' ? 'active-tab pb-1' : 'opacity-50 pb-1';
-        if(t==='tr') deal();
+    // Получить массив рук, разрешенных для раздачи в зависимости от сценария
+    function getApplicableCombos(mode, hero, opponent) {
+        if (mode === 'vs3bet') {
+            const rfiRange = getActiveRange('RFI', hero);
+            const rfiAllowed = [];
+            
+            RANKS.forEach((r1, i) => {
+                RANKS.forEach((r2, j) => {
+                    const combo = i < j ? r1+r2+'s' : (i > j ? r2+r1+'o' : r1+r2);
+                    const actionData = rfiRange[combo];
+                    if (actionData && actionData.a === 'raise') {
+                        rfiAllowed.push(combo);
+                    }
+                });
+            });
+            
+            if (rfiAllowed.length > 0) {
+                return rfiAllowed;
+            }
+        }
+        return null; 
     }
 
     function deal() {
         const mode = document.getElementById('mode').value;
         const heroPos = document.getElementById('hero').value;
-        document.getElementById('feedback').innerText = "";
-        document.getElementById('next-btn').classList.add('hidden');
-
-        // Визуализация стола
-        document.querySelectorAll('.pos-node').forEach(n => {
-            n.className = 'pos-node';
-            if (n.dataset.p === heroPos) n.classList.add('pos-hero');
+        
+        // Сброс экшенов на позициях
+        document.querySelectorAll('.pos-node').forEach(n => { 
+            n.className = 'pos-node'; 
+            n.querySelector('.pos-action-badge').innerText = '';
         });
+        document.querySelector(`[data-p="${heroPos}"]`).classList.add('pos-hero');
 
         let villainPos = null;
-        if (mode === 'vsOpen' || mode === 'vs3bet') {
-            const hIdx = POSITIONS.indexOf(heroPos);
-            // Виллаин - это кто-то до Hero (vsOpen) или после (vs3bet)
-            if (mode === 'vsOpen') {
-                if (hIdx === 0) { alert("UTG не может играть vs Open. Переключаю на MP"); document.getElementById('hero').value="MP"; return deal(); }
-                villainPos = POSITIONS[Math.floor(Math.random() * hIdx)];
+        let actionDescText = "";
+        const hIdx = POSITIONS.indexOf(heroPos);
+
+        if (mode === 'vsOpen') {
+            const possibleVillains = POSITIONS.slice(0, hIdx);
+            villainPos = possibleVillains[Math.floor(Math.random() * possibleVillains.length)];
+            currentOpponent = villainPos;
+
+            const vNode = document.querySelector(`[data-p="${villainPos}"]`);
+            vNode.classList.add('pos-villain');
+            vNode.querySelector('.pos-action-badge').innerText = 'OPEN';
+            vNode.querySelector('.pos-action-badge').className = 'pos-action-badge text-red-400';
+
+            actionDescText = `${villainPos} открылся рейзом. Все фолд. Вы на ${heroPos}. Ваш ход?`;
+            document.getElementById('villain-pos-badge').classList.remove('hidden');
+            document.getElementById('villain-pos-badge').innerText = `vs ${villainPos}`;
+        } 
+        else if (mode === 'vs3bet') {
+            const possibleVillains = POSITIONS.slice(hIdx + 1);
+            villainPos = possibleVillains.length > 0 ? possibleVillains[Math.floor(Math.random() * possibleVillains.length)] : 'BTN';
+            currentOpponent = villainPos;
+
+            const hNode = document.querySelector(`[data-p="${heroPos}"]`);
+            hNode.querySelector('.pos-action-badge').innerText = 'OPEN';
+            hNode.querySelector('.pos-action-badge').className = 'pos-action-badge text-yellow-500';
+
+            const vNode = document.querySelector(`[data-p="${villainPos}"]`);
+            vNode.classList.add('pos-villain');
+            vNode.querySelector('.pos-action-badge').innerText = '3-BET';
+            vNode.querySelector('.pos-action-badge').className = 'pos-action-badge text-red-500';
+
+            actionDescText = `Вы открылись с ${heroPos}. Оппонент на ${villainPos} сыграл 3-Bet. Что делаем?`;
+            document.getElementById('villain-pos-badge').classList.remove('hidden');
+            document.getElementById('villain-pos-badge').innerText = `vs 3B от ${villainPos}`;
+        } 
+        else {
+            currentOpponent = null;
+            document.getElementById('villain-pos-badge').classList.add('hidden');
+            
+            if (hIdx === 0) {
+                actionDescText = `Вы открываете торговлю на UTG. Какое действие?`;
             } else {
-                villainPos = POSITIONS[hIdx + 1 + Math.floor(Math.random() * (5 - hIdx))];
-                if (!villainPos) villainPos = 'BTN';
+                const foldedList = POSITIONS.slice(0, hIdx).join(', ');
+                actionDescText = `${foldedList} сыграли фолд. Вы на ${heroPos}. Ход за вами.`;
             }
-            document.querySelector(`[data-p="${villainPos}"]`).classList.add('pos-villain');
         }
 
-        // Генерация карт
-        const r1 = RANKS[Math.floor(Math.random()*13)], r2 = RANKS[Math.floor(Math.random()*13)];
-        const s1 = ["s","h","c","d"][Math.floor(Math.random()*4)], s2 = ["s","h","c","d"][Math.floor(Math.random()*4)];
-        if (r1===r2 && s1===s2) return deal();
+        document.getElementById('action-desc').innerText = actionDescText;
+
+        rangeData = getActiveRange(mode, heroPos, currentOpponent);
+
+        document.getElementById('feedback').innerHTML = '<span class="text-gray-500 font-normal">Выберите действие</span>';
+        document.getElementById('next-btn').classList.add('hidden');
+
+        // Раздача карт
+        let comboToDeal = null;
+        const allowedCombos = getApplicableCombos(mode, heroPos, currentOpponent);
+
+        if (allowedCombos) {
+            comboToDeal = allowedCombos[Math.floor(Math.random() * allowedCombos.length)];
+        }
+
+        let r1, r2, s1, s2;
+        if (comboToDeal) {
+            r1 = comboToDeal[0];
+            r2 = comboToDeal[1];
+            const isSuited = comboToDeal.endsWith('s');
+            const isPair = r1 === r2;
+
+            if (isPair) {
+                const suitsSet = ["s","h","c","d"];
+                const s1Idx = Math.floor(Math.random() * 4);
+                let s2Idx = Math.floor(Math.random() * 4);
+                while (s1Idx === s2Idx) {
+                    s2Idx = Math.floor(Math.random() * 4);
+                }
+                s1 = suitsSet[s1Idx];
+                s2 = suitsSet[s2Idx];
+            } else if (isSuited) {
+                const randomSuit = ["s","h","c","d"][Math.floor(Math.random() * 4)];
+                s1 = randomSuit;
+                s2 = randomSuit;
+            } else {
+                const s1Idx = Math.floor(Math.random() * 4);
+                let s2Idx = Math.floor(Math.random() * 4);
+                while (s1Idx === s2Idx) {
+                    s2Idx = Math.floor(Math.random() * 4);
+                }
+                s1 = ["s","h","c","d"][s1Idx];
+                s2 = ["s","h","c","d"][s2Idx];
+            }
+        } else {
+            r1 = RANKS[Math.floor(Math.random()*13)];
+            r2 = RANKS[Math.floor(Math.random()*13)];
+            s1 = ["s","h","c","d"][Math.floor(Math.random()*4)];
+            s2 = ["s","h","c","d"][Math.floor(Math.random()*4)];
+            
+            if (r1 === r2 && s1 === s2) return deal();
+        }
         
-        // Сортировка для ключа
-        const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
-        currentHand = { r1, r2, s1, s2, combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) };
-        if (i1 > i2) { // Для визуализации ставим старшую слева
+        const i1 = RANKS.indexOf(r1);
+        const i2 = RANKS.indexOf(r2);
+        currentHand = { 
+            r1, r2, s1, s2, 
+            combo: i1 < i2 ? r1+r2+(s1===s2?'s':'o') : (i1 > i2 ? r2+r1+(s1===s2?'s':'o') : r1+r2) 
+        };
+        
+        if (i1 > i2) { 
             currentHand.r1 = r2; currentHand.r2 = r1; currentHand.s1 = s2; currentHand.s2 = s1;
         }
 
         const suits = {s:'♠', h:'♥', c:'♣', d:'♦'};
         const classes = {s:'s', h:'h', c:'c', d:'d'};
         document.getElementById('cards-spot').innerHTML = `
-            <div class="card ${classes[currentHand.s1]}"><div class="val">${currentHand.r1}</div><div class="suit">${suits[currentHand.s1]}</div></div>
-            <div class="card ${classes[currentHand.s2]}"><div class="val">${currentHand.r2}</div><div class="suit">${suits[currentHand.s2]}</div></div>
+            <div class="card ${classes[currentHand.s1]}">
+                <div class="val">${currentHand.r1}</div>
+                <div class="suit">${suits[currentHand.s1]}</div>
+            </div>
+            <div class="card ${classes[currentHand.s2]}">
+                <div class="val">${currentHand.r2}</div>
+                <div class="suit">${suits[currentHand.s2]}</div>
+            </div>
         `;
     }
 
-    function handleAct(uA) {
+    function handleAct(userAction) {
         if (!document.getElementById('next-btn').classList.contains('hidden')) return;
+        
         const data = rangeData[currentHand.combo] || { a: 'fold', f: 100 };
         const fb = document.getElementById('feedback');
         
-        // Верно если: нажато основное действие ИЛИ (действие смешанное и нажато fold)
-        const isCorrect = (uA === data.a) || (data.f < 100 && uA === 'fold');
+        const isCorrect = (userAction === data.a);
 
         if (isCorrect) {
-            fb.innerHTML = `<span class="text-green-400">ВЕРНО</span><br><span class="opacity-50">${data.a} ${data.f}% / fold ${100-data.f}%</span>`;
-            setTimeout(deal, 1000);
+            fb.innerHTML = `
+                <span class="text-[#3fb950] text-base font-extrabold uppercase tracking-widest">Верно</span>
+                <span class="text-[11px] text-gray-400 mt-0.5 uppercase">${data.a} 100%</span>
+            `;
+            setTimeout(deal, 800);
         } else {
-            fb.innerHTML = `<span class="text-red-400">ОШИБКА</span><br><span>Правильно: ${data.a} ${data.f}%</span>`;
+            fb.innerHTML = `
+                <span class="text-[#f85149] text-base font-extrabold uppercase tracking-widest">Ошибка</span>
+                <span class="text-[11px] text-gray-300 mt-0.5">Правильно: <span class="uppercase text-white font-bold">${data.a}</span></span>
+            `;
             document.getElementById('next-btn').classList.remove('hidden');
         }
     }
 
-    async function loadRemote() {
-        const m = document.getElementById('mode').value;
-        const h = document.getElementById('hero').value;
-        try {
-            const r = await fetch(`charts/${m}_${h}.json`);
-            rangeData = await r.json();
-            renderMatrix();
-        } catch(e) { alert("Файл charts/"+m+"_"+h+".json не найден"); }
-    }
-
-    function exportJSON() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rangeData, null, 2));
-        const a = document.createElement('a');
-        a.setAttribute("href", dataStr);
-        a.setAttribute("download", `${document.getElementById('mode').value}_${document.getElementById('hero').value}.json`);
-        a.click();
-    }
-
-    init();
+    window.onload = () => {
+        syncUI();
+    };
 </script>
 </body>
 </html>
